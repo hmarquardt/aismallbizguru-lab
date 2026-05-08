@@ -78,6 +78,8 @@ labs-smallbizguru-backups
 Set:
 
 ```env
+LABBOX_SITE_HOST=labs.smallbizguru.com
+BASE_URL=https://labs.smallbizguru.com
 R2_BUCKET=labs-smallbizguru-backups
 R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 RESTIC_REPOSITORY=s3:https://<account-id>.r2.cloudflarestorage.com/labs-smallbizguru-backups

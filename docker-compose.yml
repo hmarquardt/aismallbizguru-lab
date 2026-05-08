@@ -2,6 +2,8 @@ services:
   caddy:
     image: caddy:2
     restart: unless-stopped
+    env_file:
+      - ${LABBOX_ENV_FILE:-.env}
     ports:
       - "80:80"
       - "443:443"

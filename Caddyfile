@@ -2,7 +2,7 @@
 	email admin@smallbizguru.com
 }
 
-labs.smallbizguru.com {
+{$LABBOX_SITE_HOST:labs.smallbizguru.com} {
 	encode zstd gzip
 
 	handle /api/* {
