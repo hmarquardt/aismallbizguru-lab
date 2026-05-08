@@ -17,7 +17,7 @@ The intended workflow is:
 Primary deployment target:
 
 ```text
-https://labs.smallbizguru.com
+https://lab.aismallbizguru.com
 ```
 
 Primary stack:
@@ -507,7 +507,7 @@ MiniMax for Python backup status/service code
 
 Goal:
 
-Deploy to Hetzner VPS at `labs.smallbizguru.com`.
+Deploy to Hetzner VPS at `lab.aismallbizguru.com`.
 
 Primary agent:
 
@@ -744,7 +744,7 @@ returns:
 {
   "status": "ok",
   "version": "0.1.0",
-  "host": "labs.smallbizguru.com",
+  "host": "lab.aismallbizguru.com",
   "db": "unknown",
   "storage": "unknown"
 }
@@ -2066,7 +2066,7 @@ Create Caddy reverse proxy config.
 Domain:
 
 ```text
-labs.smallbizguru.com
+lab.aismallbizguru.com
 ```
 
 Routes:
@@ -2146,7 +2146,7 @@ docs/deployment.md
 
 Task:
 
-Document deployment to `labs.smallbizguru.com`.
+Document deployment to `lab.aismallbizguru.com`.
 
 Include:
 
@@ -2191,7 +2191,7 @@ Deploy MVP to VPS.
 
 Requirements:
 
-- App available at `https://labs.smallbizguru.com`.
+- App available at `https://lab.aismallbizguru.com`.
 - Health endpoint available.
 - Admin login available.
 - SQLite initialized.
@@ -2204,7 +2204,7 @@ Requirements:
 Acceptance Criteria:
 
 ```http
-GET https://labs.smallbizguru.com/api/health
+GET https://lab.aismallbizguru.com/api/health
 ```
 
 returns healthy response.
@@ -2321,7 +2321,7 @@ Include:
 
 Acceptance Criteria:
 
-- Examples use `labs.smallbizguru.com`.
+- Examples use `lab.aismallbizguru.com`.
 - Examples include bearer token placeholder.
 - Examples are copy/paste friendly.
 - No real bearer token is included.
@@ -2388,7 +2388,7 @@ Use this template when handing setup/integration/deployment tasks to Codex or Op
 ```markdown
 You are working on LabBox Backend, a Dockerized personal experiment backend deployed to:
 
-https://labs.smallbizguru.com
+https://lab.aismallbizguru.com
 
 Important repo context:
 - The project directory already exists.
@@ -2520,7 +2520,7 @@ Use this short checklist as the main implementation order.
 
 LabBox Backend implementation is considered done when:
 
-- The app is deployed at `https://labs.smallbizguru.com`.
+- The app is deployed at `https://lab.aismallbizguru.com`.
 - Health endpoint returns healthy DB and storage status.
 - Admin can log in.
 - Admin can create bearer tokens.

@@ -3,19 +3,19 @@
 Health:
 
 ```bash
-curl https://labs.smallbizguru.com/api/health
+curl https://lab.aismallbizguru.com/api/health
 ```
 
 List configured apps:
 
 ```bash
-curl https://labs.smallbizguru.com/api/apps
+curl https://lab.aismallbizguru.com/api/apps
 ```
 
 Create a record:
 
 ```bash
-curl -X POST https://labs.smallbizguru.com/api/junk-drawer/notes \
+curl -X POST https://lab.aismallbizguru.com/api/junk-drawer/notes \
   -H "Authorization: Bearer $LABBOX_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"data":{"title":"First note","body":"Hello"}}'
@@ -24,14 +24,14 @@ curl -X POST https://labs.smallbizguru.com/api/junk-drawer/notes \
 List records:
 
 ```bash
-curl https://labs.smallbizguru.com/api/junk-drawer/notes \
+curl https://lab.aismallbizguru.com/api/junk-drawer/notes \
   -H "Authorization: Bearer $LABBOX_TOKEN"
 ```
 
 Upload a file:
 
 ```bash
-curl -X POST https://labs.smallbizguru.com/api/junk-drawer/notes/$RECORD_ID/files \
+curl -X POST https://lab.aismallbizguru.com/api/junk-drawer/notes/$RECORD_ID/files \
   -H "Authorization: Bearer $LABBOX_TOKEN" \
   -F "file=@example.png;type=image/png"
 ```

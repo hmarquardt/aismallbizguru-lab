@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_env: str = Field(default="development", alias="APP_ENV")
-    base_url: AnyUrl = Field(default="https://labs.smallbizguru.com", alias="BASE_URL")
+    base_url: AnyUrl = Field(default="https://lab.aismallbizguru.com", alias="BASE_URL")
     sqlite_path: str = Field(default="../data/sqlite/labbox.db", alias="SQLITE_PATH")
     app_config_path: str = Field(default="../config/apps.yaml", alias="APP_CONFIG_PATH")
     version: str = "0.1.0"
@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     @property
     def host(self) -> str:
-        return self.base_url.host or "labs.smallbizguru.com"
+        return self.base_url.host or "lab.aismallbizguru.com"
 
 
 @lru_cache

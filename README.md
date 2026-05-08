@@ -5,7 +5,7 @@ Lightweight backend appliance for personal experiments and small private web too
 The initial target deployment is:
 
 ```text
-https://labs.smallbizguru.com
+https://lab.aismallbizguru.com
 ```
 
 ## Stack

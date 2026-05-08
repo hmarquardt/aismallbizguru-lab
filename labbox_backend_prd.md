@@ -6,7 +6,7 @@ Build a lightweight, reusable backend appliance for personal experiments and sma
 
 The system will run on the Hetzner VPS currently available at:
 
-**https://labs.smallbizguru.com**
+**https://lab.aismallbizguru.com**
 
 LabBox Backend is intended to support web projects that are more ambitious than single-page local-first apps, but are **not production SaaS systems with paying customers**.
 
@@ -47,23 +47,23 @@ Primary deployment host:
 
 | Item | Value |
 |---|---|
-| Domain | `labs.smallbizguru.com` |
+| Domain | `lab.aismallbizguru.com` |
 | Provider | Hetzner |
 | Deployment style | Docker Compose on VPS |
-| Public URL | `https://labs.smallbizguru.com` |
+| Public URL | `https://lab.aismallbizguru.com` |
 
 The base domain will serve the LabBox admin interface and API gateway.
 
 Optional future subdomains:
 
-- `api.labs.smallbizguru.com`
-- `minio.labs.smallbizguru.com`
-- `admin.labs.smallbizguru.com`
+- `api.lab.aismallbizguru.com`
+- `minio.lab.aismallbizguru.com`
+- `admin.lab.aismallbizguru.com`
 
 For MVP, prefer keeping everything under:
 
 ```text
-https://labs.smallbizguru.com
+https://lab.aismallbizguru.com
 ```
 
 with path-based routing.
@@ -120,7 +120,7 @@ This is **not** intended for:
 LabBox Backend should:
 
 - Run cheaply on the Hetzner VPS
-- Be available at `labs.smallbizguru.com`
+- Be available at `lab.aismallbizguru.com`
 - Be easy to develop locally with Docker
 - Deploy with Docker Compose
 - Expose a simple Python API
@@ -168,7 +168,7 @@ Current VPS:
 | Item | Value |
 |---|---|
 | Provider | Hetzner |
-| Domain | `labs.smallbizguru.com` |
+| Domain | `lab.aismallbizguru.com` |
 | OS | Ubuntu 24.04 LTS or Debian 12 preferred |
 | Deployment | Docker Compose |
 | Reverse Proxy | Caddy |
@@ -193,7 +193,7 @@ Browser / Static App
         |
         | HTTPS
         v
-labs.smallbizguru.com
+lab.aismallbizguru.com
         |
         v
 Caddy Reverse Proxy
@@ -225,11 +225,11 @@ MVP should use path-based routing.
 
 | URL | Purpose |
 |---|---|
-| `https://labs.smallbizguru.com/` | Landing page or admin redirect |
-| `https://labs.smallbizguru.com/admin` | Admin UI |
-| `https://labs.smallbizguru.com/api` | API root |
-| `https://labs.smallbizguru.com/api/health` | Health check |
-| `https://labs.smallbizguru.com/files` | Proxied file access |
+| `https://lab.aismallbizguru.com/` | Landing page or admin redirect |
+| `https://lab.aismallbizguru.com/admin` | Admin UI |
+| `https://lab.aismallbizguru.com/api` | API root |
+| `https://lab.aismallbizguru.com/api/health` | Health check |
+| `https://lab.aismallbizguru.com/files` | Proxied file access |
 
 MinIO should not be publicly exposed by default.
 
@@ -342,12 +342,12 @@ Suggested bucket names:
 
 - `labbox-backups`
 - `smallbizguru-labbox-backups`
-- `labs-smallbizguru-backups`
+- `lab-aismallbizguru-backups`
 
 Recommended final bucket name:
 
 ```text
-labs-smallbizguru-backups
+lab-aismallbizguru-backups
 ```
 
 ---
@@ -545,7 +545,7 @@ Returns:
   "version": "0.1.0",
   "db": "ok",
   "storage": "ok",
-  "host": "labs.smallbizguru.com"
+  "host": "lab.aismallbizguru.com"
 }
 ```
 
@@ -701,7 +701,7 @@ Cloudflare R2 bucket
 Recommended bucket name:
 
 ```text
-labs-smallbizguru-backups
+lab-aismallbizguru-backups
 ```
 
 ---
@@ -841,7 +841,7 @@ Example `.env`:
 
 ```env
 APP_ENV=production
-BASE_URL=https://labs.smallbizguru.com
+BASE_URL=https://lab.aismallbizguru.com
 TZ=America/Indiana/Indianapolis
 
 ADMIN_PASSWORD_HASH=
@@ -862,10 +862,10 @@ S3_REGION=us-east-1
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
-R2_BUCKET=labs-smallbizguru-backups
+R2_BUCKET=lab-aismallbizguru-backups
 R2_ENDPOINT=https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com
 
-RESTIC_REPOSITORY=s3:https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/labs-smallbizguru-backups
+RESTIC_REPOSITORY=s3:https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/lab-aismallbizguru-backups
 RESTIC_PASSWORD=
 
 BACKUP_RETENTION_DAILY=7
@@ -1022,7 +1022,7 @@ Admin dashboard should show:
 
 MVP is complete when:
 
-1. LabBox is running at `https://labs.smallbizguru.com`.
+1. LabBox is running at `https://lab.aismallbizguru.com`.
 2. A new app can be added through YAML config.
 3. The API exposes CRUD endpoints for that app’s resources.
 4. A browser app can authenticate with a bearer token.
@@ -1048,7 +1048,7 @@ MVP is complete when:
 - Caddy reverse proxy
 - SQLite connection
 - Health endpoint
-- Public availability at `https://labs.smallbizguru.com/api/health`
+- Public availability at `https://lab.aismallbizguru.com/api/health`
 
 ### Milestone 2: Config Registry
 

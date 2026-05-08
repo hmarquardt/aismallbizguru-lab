@@ -83,6 +83,6 @@ docker compose up -d
 After restore:
 
 ```bash
-curl https://labs.smallbizguru.com/api/health
+curl https://lab.aismallbizguru.com/api/health
 docker compose logs --tail=100 api
 ```

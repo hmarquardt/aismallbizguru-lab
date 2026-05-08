@@ -3,14 +3,14 @@
 Target host:
 
 ```text
-https://labs.smallbizguru.com
+https://lab.aismallbizguru.com
 ```
 
 This repo is expected to already exist on GitHub. Do not commit real secrets.
 
 ## DNS
 
-Create an `A` record for `labs.smallbizguru.com` pointing at the Hetzner VPS IPv4 address.
+Create an `A` record for `lab.aismallbizguru.com` pointing at the Hetzner VPS IPv4 address.
 
 ## VPS Setup
 
@@ -72,17 +72,17 @@ RESTIC_PASSWORD
 Create the Cloudflare R2 bucket:
 
 ```text
-labs-smallbizguru-backups
+lab-aismallbizguru-backups
 ```
 
 Set:
 
 ```env
-LABBOX_SITE_HOST=labs.smallbizguru.com
-BASE_URL=https://labs.smallbizguru.com
-R2_BUCKET=labs-smallbizguru-backups
+LABBOX_SITE_HOST=lab.aismallbizguru.com
+BASE_URL=https://lab.aismallbizguru.com
+R2_BUCKET=lab-aismallbizguru-backups
 R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-RESTIC_REPOSITORY=s3:https://<account-id>.r2.cloudflarestorage.com/labs-smallbizguru-backups
+RESTIC_REPOSITORY=s3:https://<account-id>.r2.cloudflarestorage.com/lab-aismallbizguru-backups
 ```
 
 For MinIO, use the same values for the app S3 credentials and root credentials unless you later add a narrower MinIO user:
@@ -113,7 +113,7 @@ Check:
 
 ```bash
 docker compose ps
-curl https://labs.smallbizguru.com/api/health
+curl https://lab.aismallbizguru.com/api/health
 ```
 
 ## First Backup
@@ -125,7 +125,7 @@ docker compose exec api bash /app/scripts/backup_now.sh
 Then check backup status:
 
 ```bash
-curl https://labs.smallbizguru.com/api/health
+curl https://lab.aismallbizguru.com/api/health
 ```
 
 ## Never Commit Secrets
