@@ -5,6 +5,9 @@
 {$LABBOX_SITE_HOST:labs.smallbizguru.com} {
 	encode zstd gzip
 
+	@root path /
+	redir @root /admin/login 302
+
 	handle /api/* {
 		reverse_proxy api:8000
 	}
@@ -18,6 +21,6 @@
 	}
 
 	handle {
-		redir /admin/ 302
+		redir * /admin/login 302
 	}
 }
