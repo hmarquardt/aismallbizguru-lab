@@ -58,4 +58,5 @@ Required deployment secrets include admin password/session values, API token pep
 - [API examples](docs/api-examples.md)
 - [Static site backend guide](docs/static-site-backend-guide.md)
 - [Deployment](docs/deployment.md)
+- [Deploy runbook](deploy.md)
 - [Backup and restore](docs/backup-restore.md)
