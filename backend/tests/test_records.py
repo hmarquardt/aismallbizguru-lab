@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.auth.tokens import generate_token
 from app.config.loader import clear_registry_cache
-from app.db.models import ApiTokenModel, utc_now
+from app.db.models import ApiTokenModel, FileModel, utc_now
 from app.db.session import clear_engine_cache, get_session_factory
 from app.main import app
 from app.settings import get_settings
@@ -213,3 +213,82 @@ apps:
         response = public_client.post("/api/public-site/posts", json={"data": {"title": "Nope"}})
 
     assert response.status_code == 401
+
+
+def test_record_list_includes_attached_file_urls(client, auth_token):
+    create_resp = client.post(
+        "/api/junk-drawer/notes",
+        json={"data": {"title": "Photo Note"}},
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    record_id = create_resp.json()["id"]
+
+    session = get_session_factory()()
+    try:
+        session.add(
+            FileModel(
+                id="test-file-1",
+                app_id="junk-drawer",
+                resource="notes",
+                record_id=record_id,
+                bucket="labbox-assets",
+                object_key=f"junk-drawer/{record_id}/test-photo.webp",
+                filename="test-photo.webp",
+                content_type="image/webp",
+                size_bytes=12,
+                checksum="abc123",
+                created_at=utc_now(),
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    response = client.get(
+        "/api/junk-drawer/notes",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+
+    assert response.status_code == 200
+    record = response.json()["records"][0]
+    assert record["files"][0]["url"] == "https://lab.aismallbizguru.com/api/files/test-file-1"
+    assert record["files"][0]["download_url"] == "https://lab.aismallbizguru.com/api/files/test-file-1"
+    assert record["data"]["photo_url"] == "https://lab.aismallbizguru.com/api/files/test-file-1"
+
+
+def test_record_photo_url_is_not_overwritten(client, auth_token):
+    create_resp = client.post(
+        "/api/junk-drawer/notes",
+        json={"data": {"title": "Photo Note", "photo_url": "https://example.com/photo.jpg"}},
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    record_id = create_resp.json()["id"]
+
+    session = get_session_factory()()
+    try:
+        session.add(
+            FileModel(
+                id="test-file-2",
+                app_id="junk-drawer",
+                resource="notes",
+                record_id=record_id,
+                bucket="labbox-assets",
+                object_key=f"junk-drawer/{record_id}/test-photo.webp",
+                filename="test-photo.webp",
+                content_type="image/webp",
+                size_bytes=12,
+                checksum="abc123",
+                created_at=utc_now(),
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    response = client.get(
+        f"/api/junk-drawer/notes/{record_id}",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["photo_url"] == "https://example.com/photo.jpg"

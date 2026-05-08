@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from app.settings import get_settings
+
 
 class FileOut(BaseModel):
     id: str
@@ -11,9 +13,13 @@ class FileOut(BaseModel):
     size_bytes: int | None
     checksum: str | None
     created_at: str
+    url: str
+    download_url: str
 
     @classmethod
     def from_row(cls, row) -> "FileOut":
+        path = f"/api/files/{row.id}"
+        url = f"{str(get_settings().base_url).rstrip('/')}{path}"
         return cls(
             id=row.id,
             app_id=row.app_id,
@@ -24,6 +30,8 @@ class FileOut(BaseModel):
             size_bytes=row.size_bytes,
             checksum=row.checksum,
             created_at=row.created_at,
+            url=url,
+            download_url=url,
         )
 
 

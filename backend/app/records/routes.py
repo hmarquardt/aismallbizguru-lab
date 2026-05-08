@@ -3,7 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.dependencies import check_read_access, check_scope, get_optional_token, get_required_token
+from app.config.loader import get_registry
 from app.db.models import ApiTokenModel
+from app.files.schemas import FileOut
+from app.files.service import FileServiceError, list_files
 from app.records.schemas import RecordCreate, RecordListOut, RecordOut, RecordUpdate
 from app.records.service import RecordError, create_record, get_record, list_records, soft_delete_record, update_record
 
@@ -14,6 +17,8 @@ router = APIRouter(prefix="/api", tags=["records"])
 def _record_out_from_model(model) -> RecordOut:
     import json
     data = json.loads(model.data_json) if isinstance(model.data_json, str) else model.data_json
+    files = _files_for_record(model.app_id, model.resource, model.id)
+    _add_image_url_fallback(data, files)
     return RecordOut(
         id=model.id,
         app_id=model.app_id,
@@ -22,7 +27,27 @@ def _record_out_from_model(model) -> RecordOut:
         created_at=model.created_at,
         updated_at=model.updated_at,
         deleted_at=model.deleted_at,
+        files=files,
     )
+
+
+def _files_for_record(app_id: str, resource: str, record_id: str) -> list[FileOut]:
+    resource_config = get_registry().get_resource(app_id, resource)
+    if resource_config is None or not resource_config.files.enabled:
+        return []
+    try:
+        return [FileOut.from_row(file) for file in list_files(app_id, resource, record_id)]
+    except FileServiceError:
+        return []
+
+
+def _add_image_url_fallback(data: dict, files: list[FileOut]) -> None:
+    if any(data.get(key) for key in ("photo_url", "photo", "image")):
+        return
+    for file in files:
+        if file.content_type and file.content_type.startswith("image/"):
+            data["photo_url"] = file.url
+            return
 
 
 @router.get("/{app_id}/{resource}", response_model=RecordListOut)

@@ -2,6 +2,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.files.schemas import FileOut
+
 
 class RecordCreate(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
@@ -19,6 +21,7 @@ class RecordOut(BaseModel):
     created_at: str
     updated_at: str
     deleted_at: str | None = None
+    files: list[FileOut] = Field(default_factory=list)
 
     @classmethod
     def from_row(cls, row: Any) -> "RecordOut":
