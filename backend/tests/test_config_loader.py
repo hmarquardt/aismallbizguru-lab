@@ -13,6 +13,13 @@ def test_loads_sample_config() -> None:
     assert app.resources["notes"].fields["title"].required is True
     assert app.resources["notes"].files.enabled is True
 
+    top_hat = config.apps["top-hat-ferals"]
+    assert top_hat.auth.default_read == "public"
+    assert top_hat.auth.default_write == "token"
+    assert set(top_hat.resources) == {"cats", "sightings", "interactions"}
+    assert top_hat.resources["cats"].files.enabled is True
+    assert "image/webp" in top_hat.resources["interactions"].files.allowed_types
+
 
 def test_invalid_field_type_raises_clear_error(tmp_path: Path) -> None:
     config_path = tmp_path / "apps.yaml"

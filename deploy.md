@@ -121,7 +121,7 @@ Required production host values:
 ```env
 LABBOX_SITE_HOST=lab.aismallbizguru.com
 BASE_URL=https://lab.aismallbizguru.com
-CORS_ALLOW_ORIGINS=https://hmarquardt.github.io
+CORS_ALLOW_ORIGINS=https://hmarquardt.github.io,https://tophatferals.com,https://www.tophatferals.com
 SQLITE_PATH=/data/sqlite/labbox.db
 APP_CONFIG_PATH=/config/apps.yaml
 MINIO_AUTO_INIT=true
@@ -214,6 +214,20 @@ Expected headers:
 ```text
 access-control-allow-origin: https://hmarquardt.github.io
 access-control-allow-methods: GET, POST, PATCH, DELETE, OPTIONS
+```
+
+Top Hat Ferals CORS preflight:
+
+```bash
+curl -i -sS -X OPTIONS https://lab.aismallbizguru.com/api/top-hat-ferals/cats \
+  -H 'Origin: https://tophatferals.com' \
+  -H 'Access-Control-Request-Method: GET'
+```
+
+Expected:
+
+```text
+access-control-allow-origin: https://tophatferals.com
 ```
 
 Private resources should still reject unauthenticated reads unless configured public:

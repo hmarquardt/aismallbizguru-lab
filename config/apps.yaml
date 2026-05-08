@@ -25,3 +25,135 @@ apps:
             - image/jpeg
             - application/json
           max_size_mb: 25
+
+  top-hat-ferals:
+    title: Top Hat Ferals
+    description: Public observational log for the Top Hat Road feral cat colony.
+    auth:
+      default_read: public
+      default_write: token
+
+    resources:
+      cats:
+        label: Cats
+        fields:
+          name:
+            type: string
+            required: true
+          nickname:
+            type: string
+          status:
+            type: string
+          description:
+            type: text
+          notes:
+            type: text
+          photo_url:
+            type: string
+          photo:
+            type: string
+          image:
+            type: string
+          first_seen:
+            type: datetime
+          last_seen:
+            type: datetime
+          color:
+            type: string
+          markings:
+            type: text
+          temperament:
+            type: string
+          tags:
+            type: list
+        files:
+          enabled: true
+          allowed_types:
+            - image/png
+            - image/jpeg
+            - image/webp
+          max_size_mb: 25
+
+      sightings:
+        label: Sightings
+        fields:
+          cat:
+            type: string
+            required: true
+          cat_name:
+            type: string
+          cat_id:
+            type: string
+          date:
+            type: datetime
+            required: true
+          time:
+            type: string
+          location:
+            type: string
+          note:
+            type: text
+          notes:
+            type: text
+          description:
+            type: text
+          photo_url:
+            type: string
+          photo:
+            type: string
+          image:
+            type: string
+          confidence:
+            type: string
+          source:
+            type: string
+          tags:
+            type: list
+        files:
+          enabled: true
+          allowed_types:
+            - image/png
+            - image/jpeg
+            - image/webp
+          max_size_mb: 25
+
+      interactions:
+        label: Interactions
+        fields:
+          cat:
+            type: string
+            required: true
+          cat_name:
+            type: string
+          cat_id:
+            type: string
+          date:
+            type: datetime
+            required: true
+          type:
+            type: string
+          location:
+            type: string
+          with:
+            type: string
+          note:
+            type: text
+          notes:
+            type: text
+          description:
+            type: text
+          photo_url:
+            type: string
+          photo:
+            type: string
+          image:
+            type: string
+          tags:
+            type: list
+        files:
+          enabled: true
+          allowed_types:
+            - image/png
+            - image/jpeg
+            - image/webp
+          max_size_mb: 25
