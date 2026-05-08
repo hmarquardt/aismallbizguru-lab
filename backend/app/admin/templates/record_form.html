@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if mode == 'edit' else 'New' }} {{ resource_config.label }} - LabBox Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ 'Edit' if mode == 'edit' else 'New' }} {{ resource_config.label }}</h1>
+        <p class="muted">{{ app.title }} / <code>{{ app_id }}</code> / <code>{{ resource }}</code></p>
+    </div>
+    <a class="btn btn-secondary" href="{{ '/admin/records/' ~ record.id if record else '/admin/apps/' ~ app_id ~ '/' ~ resource }}">Cancel</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+    <form method="post" action="{{ '/admin/records/' ~ record.id if record else '/admin/apps/' ~ app_id ~ '/' ~ resource ~ '/new' }}">
+        {% for field_name, field in resource_config.fields.items() %}
+        <div class="form-group">
+            <label for="{{ field_name }}">{{ field.label or field_name }}{% if field.required %} *{% endif %}</label>
+            {% if field.type.value == 'text' or field.type.value == 'json' or field.type.value == 'list' %}
+            <textarea id="{{ field_name }}" name="{{ field_name }}" rows="6">{{ values.get(field_name, '') }}</textarea>
+            {% elif field.type.value == 'boolean' %}
+            <label class="check-row">
+                <input id="{{ field_name }}" name="{{ field_name }}" type="checkbox" {% if values.get(field_name) in [true, 'true', 'True', 'on', '1'] %}checked{% endif %}>
+                Enabled
+            </label>
+            {% elif field.type.value == 'integer' or field.type.value == 'number' %}
+            <input id="{{ field_name }}" name="{{ field_name }}" type="number" {% if field.type.value == 'number' %}step="any"{% endif %} value="{{ values.get(field_name, '') }}">
+            {% elif field.type.value == 'datetime' %}
+            <input id="{{ field_name }}" name="{{ field_name }}" type="datetime-local" value="{{ values.get(field_name, '') }}">
+            {% else %}
+            <input id="{{ field_name }}" name="{{ field_name }}" type="text" value="{{ values.get(field_name, '') }}">
+            {% endif %}
+            {% if field.description %}
+            <p class="help-text">{{ field.description }}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+        <button class="btn" type="submit">{{ 'Save Changes' if mode == 'edit' else 'Create Record' }}</button>
+    </form>
+</div>
+{% endblock %}

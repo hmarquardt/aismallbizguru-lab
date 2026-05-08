@@ -1,4 +1,5 @@
 import uuid
+from io import BytesIO
 from typing import BinaryIO
 from urllib.parse import urlparse
 
@@ -34,14 +35,15 @@ def generate_object_key(app_id: str, record_id: str, filename: str) -> str:
     return f"{app_id}/{record_id}/{unique}_{safe_name}"
 
 
-def put_file(object_key: str, data: BinaryIO, content_type: str, size: int) -> None:
+def put_file(object_key: str, data: BinaryIO | bytes, content_type: str, size: int) -> None:
     try:
         client = _get_client()
         settings = get_settings()
+        stream = BytesIO(data) if isinstance(data, bytes) else data
         client.put_object(
             bucket_name=settings.minio_bucket,
             object_name=object_key,
-            data=data,
+            data=stream,
             length=size,
             content_type=content_type,
         )

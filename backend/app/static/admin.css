@@ -107,6 +107,19 @@ tr:hover {
     background: #2980b9;
 }
 
+.btn-small {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+}
+
+.btn-secondary {
+    background: #607d8b;
+}
+
+.btn-secondary:hover {
+    background: #546e7a;
+}
+
 .btn-danger {
     background: #e74c3c;
 }
@@ -127,6 +140,7 @@ tr:hover {
 
 .form-group input, .form-group textarea, .form-group select {
     width: 100%;
+    box-sizing: border-box;
     padding: 0.5rem;
     border: 1px solid #ddd;
     border-radius: 4px;
@@ -154,3 +168,98 @@ tr:hover {
 .status-ok { color: #27ae60; }
 .status-error { color: #e74c3c; }
 .status-warning { color: #f39c12; }
+
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.page-header h1,
+.page-header h2,
+.page-header p {
+    margin-top: 0;
+    margin-bottom: 0.25rem;
+}
+
+.page-header.compact {
+    align-items: flex-start;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.muted,
+.help-text {
+    color: #6c757d;
+}
+
+.help-text {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+}
+
+.pill-link {
+    display: inline-block;
+    margin: 0.15rem 0.25rem 0.15rem 0;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #d5dce0;
+    border-radius: 4px;
+    color: #2c3e50;
+    text-decoration: none;
+    background: #f8f9fa;
+}
+
+.pill-link:hover {
+    background: #ecf0f1;
+}
+
+.check-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    font-weight: 400;
+}
+
+.check-row input {
+    width: auto;
+}
+
+.inline-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.inline-form input {
+    min-width: 12rem;
+    padding: 0.35rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@media (max-width: 760px) {
+    nav,
+    .page-header,
+    .actions,
+    .inline-form {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    table {
+        display: block;
+        overflow-x: auto;
+    }
+}

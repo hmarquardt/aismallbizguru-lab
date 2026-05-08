@@ -1,17 +1,23 @@
 import json
 import uuid
+from typing import Any
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Response, status
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Request, Response, status
+from fastapi.responses import HTMLResponse, StreamingResponse
 from sqlalchemy import func, select
+from starlette.datastructures import UploadFile
 
 from app.auth.password import verify_password
 from app.auth.tokens import generate_token, masked_token
 from app.backups.runner import BackupRunError, run_backup_now
 from app.config.loader import get_registry
+from app.config.models import FieldConfig, FieldType
 from app.db.models import ApiTokenModel, BackupRunModel, FileModel, RecordModel, utc_now
 from app.db.session import get_session_factory
+from app.files.service import FileServiceError, create_file, delete_file_record, get_file_metadata, list_files, rename_file_record
+from app.files.storage import StorageError, get_file
+from app.records.service import RecordError, create_record, get_record, list_records as list_resource_records, soft_delete_record, update_record
 from app.settings import get_settings
 from app.templates import env
 
@@ -32,6 +38,82 @@ def require_admin(session: Annotated[str | None, Cookie()] = None) -> str:
 def render(template_name: str, **context) -> HTMLResponse:
     template = TEMPLATES.get_template(template_name)
     return HTMLResponse(template.render(**context))
+
+
+def redirect(location: str, response: Response) -> Response:
+    response.headers["Location"] = location
+    response.status_code = status.HTTP_303_SEE_OTHER
+    return response
+
+
+def parse_record_data(resource_config, form: dict[str, Any]) -> dict[str, Any]:
+    data: dict[str, Any] = {}
+    errors: list[str] = []
+    for field_name, field_config in resource_config.fields.items():
+        raw_value = form.get(field_name)
+        if field_config.type == FieldType.boolean:
+            data[field_name] = raw_value in {"on", "true", "1", "yes"}
+            continue
+
+        raw_text = str(raw_value).strip() if raw_value is not None else ""
+        if field_config.required and raw_text == "":
+            errors.append(f"{field_label(field_name, field_config)} is required")
+            continue
+        if raw_text == "":
+            if field_config.default is not None:
+                data[field_name] = field_config.default
+            continue
+
+        try:
+            data[field_name] = parse_field_value(field_config.type, raw_text)
+        except ValueError as exc:
+            errors.append(f"{field_label(field_name, field_config)}: {exc}")
+
+    if errors:
+        raise RecordError("; ".join(errors))
+    return data
+
+
+def parse_field_value(field_type: FieldType, raw_value: str) -> Any:
+    if field_type == FieldType.integer:
+        return int(raw_value)
+    if field_type == FieldType.number:
+        return float(raw_value)
+    if field_type in {FieldType.json, FieldType.list}:
+        value = json.loads(raw_value)
+        if field_type == FieldType.list and not isinstance(value, list):
+            raise ValueError("must be a JSON list")
+        return value
+    return raw_value
+
+
+def field_label(field_name: str, field_config: FieldConfig) -> str:
+    return field_config.label or field_name.replace("_", " ").title()
+
+
+def record_form_values(resource_config, record: RecordModel | None = None) -> dict[str, Any]:
+    values: dict[str, Any] = {}
+    if record is not None:
+        values = json.loads(record.data_json) if isinstance(record.data_json, str) else record.data_json
+    return {
+        name: format_field_value(config.type, values.get(name, config.default))
+        for name, config in resource_config.fields.items()
+    }
+
+
+def format_field_value(field_type: FieldType, value: Any) -> str:
+    if value is None:
+        return ""
+    if field_type in {FieldType.json, FieldType.list}:
+        return json.dumps(value, indent=2)
+    return str(value)
+
+
+def get_record_or_404(record_id: str) -> RecordModel:
+    record = get_record(record_id)
+    if record is None or record.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")
+    return record
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -79,6 +161,55 @@ def list_apps(_: Annotated[str, Depends(require_admin)]):
     return render("apps.html", apps=registry.list_apps())
 
 
+@router.get("/apps/{app_id}/{resource}", response_class=HTMLResponse)
+def resource_records(app_id: str, resource: str, _: Annotated[str, Depends(require_admin)]):
+    registry = get_registry()
+    app_config = registry.get_app(app_id)
+    resource_config = registry.get_resource(app_id, resource)
+    if app_config is None or resource_config is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+    records = list_resource_records(app_id, resource)
+    return render("resource_records.html", app_id=app_id, app=app_config,
+                  resource=resource, resource_config=resource_config,
+                  records=[{
+                      "id": r.id,
+                      "data": json.loads(r.data_json) if isinstance(r.data_json, str) else r.data_json,
+                      "created_at": r.created_at,
+                      "updated_at": r.updated_at,
+                  } for r in records])
+
+
+@router.get("/apps/{app_id}/{resource}/new", response_class=HTMLResponse)
+def new_record_form(app_id: str, resource: str, _: Annotated[str, Depends(require_admin)]):
+    registry = get_registry()
+    app_config = registry.get_app(app_id)
+    resource_config = registry.get_resource(app_id, resource)
+    if app_config is None or resource_config is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+    return render("record_form.html", mode="create", app_id=app_id, app=app_config,
+                  resource=resource, resource_config=resource_config,
+                  values=record_form_values(resource_config), error=None, record=None)
+
+
+@router.post("/apps/{app_id}/{resource}/new")
+async def create_record_page(app_id: str, resource: str, request: Request, response: Response,
+                             _: Annotated[str, Depends(require_admin)]):
+    registry = get_registry()
+    app_config = registry.get_app(app_id)
+    resource_config = registry.get_resource(app_id, resource)
+    if app_config is None or resource_config is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+
+    form = dict(await request.form())
+    try:
+        record = create_record(app_id, resource, parse_record_data(resource_config, form))
+    except RecordError as exc:
+        return render("record_form.html", mode="create", app_id=app_id, app=app_config,
+                      resource=resource, resource_config=resource_config,
+                      values=form, error=str(exc), record=None)
+    return redirect(f"/admin/records/{record.id}", response)
+
+
 @router.get("/records", response_class=HTMLResponse)
 def list_records(_: Annotated[str, Depends(require_admin)]):
     session = get_session_factory()()
@@ -98,6 +229,81 @@ def list_records(_: Annotated[str, Depends(require_admin)]):
     return render("records.html", records=data)
 
 
+@router.get("/records/{record_id}", response_class=HTMLResponse)
+def record_detail(record_id: str, _: Annotated[str, Depends(require_admin)]):
+    record = get_record_or_404(record_id)
+    registry = get_registry()
+    app_config = registry.get_app(record.app_id)
+    resource_config = registry.get_resource(record.app_id, record.resource)
+    if app_config is None or resource_config is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not configured")
+
+    files = list_files(record.app_id, record.resource, record.id) if resource_config.files.enabled else []
+    data = json.loads(record.data_json) if isinstance(record.data_json, str) else record.data_json
+    return render("record_detail.html", record=record, data=data, app=app_config,
+                  resource_config=resource_config, files=files)
+
+
+@router.get("/records/{record_id}/edit", response_class=HTMLResponse)
+def edit_record_form(record_id: str, _: Annotated[str, Depends(require_admin)]):
+    record = get_record_or_404(record_id)
+    registry = get_registry()
+    app_config = registry.get_app(record.app_id)
+    resource_config = registry.get_resource(record.app_id, record.resource)
+    if app_config is None or resource_config is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not configured")
+    return render("record_form.html", mode="edit", app_id=record.app_id, app=app_config,
+                  resource=record.resource, resource_config=resource_config,
+                  values=record_form_values(resource_config, record), error=None, record=record)
+
+
+@router.post("/records/{record_id}")
+async def update_record_page(record_id: str, request: Request, response: Response,
+                             _: Annotated[str, Depends(require_admin)]):
+    record = get_record_or_404(record_id)
+    registry = get_registry()
+    app_config = registry.get_app(record.app_id)
+    resource_config = registry.get_resource(record.app_id, record.resource)
+    if app_config is None or resource_config is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not configured")
+
+    form = dict(await request.form())
+    try:
+        update_record(record_id, parse_record_data(resource_config, form))
+    except RecordError as exc:
+        return render("record_form.html", mode="edit", app_id=record.app_id, app=app_config,
+                      resource=record.resource, resource_config=resource_config,
+                      values=form, error=str(exc), record=record)
+    return redirect(f"/admin/records/{record_id}", response)
+
+
+@router.post("/records/{record_id}/delete")
+def delete_record_page(record_id: str, response: Response, _: Annotated[str, Depends(require_admin)]):
+    record = get_record_or_404(record_id)
+    location = f"/admin/apps/{record.app_id}/{record.resource}"
+    try:
+        soft_delete_record(record_id)
+    except RecordError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return redirect(location, response)
+
+
+@router.post("/records/{record_id}/files")
+async def upload_record_file(record_id: str, request: Request, response: Response,
+                             _: Annotated[str, Depends(require_admin)]):
+    record = get_record_or_404(record_id)
+    form = await request.form()
+    uploaded = form.get("file")
+    if not isinstance(uploaded, UploadFile):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File is required")
+    try:
+        create_file(record.app_id, record.resource, record.id, uploaded.filename or "unnamed",
+                    uploaded.content_type or "application/octet-stream", await uploaded.read())
+    except FileServiceError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return redirect(f"/admin/records/{record_id}", response)
+
+
 @router.get("/files", response_class=HTMLResponse)
 def list_files_admin(_: Annotated[str, Depends(require_admin)]):
     session = get_session_factory()()
@@ -113,6 +319,45 @@ def list_files_admin(_: Annotated[str, Depends(require_admin)]):
         "record_id": f.record_id, "filename": f.filename,
         "content_type": f.content_type, "size_bytes": f.size_bytes, "created_at": f.created_at
     } for f in files])
+
+
+@router.get("/files/{file_id}/download")
+def download_file_admin(file_id: str, _: Annotated[str, Depends(require_admin)]) -> StreamingResponse:
+    model = get_file_metadata(file_id)
+    if model is None or model.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    try:
+        data_stream = get_file(model.object_key)
+    except StorageError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+    return StreamingResponse(
+        data_stream,
+        media_type=model.content_type or "application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{model.filename}"'},
+    )
+
+
+@router.post("/files/{file_id}/rename")
+def rename_file_page(file_id: str, response: Response, _: Annotated[str, Depends(require_admin)],
+                     filename: Annotated[str, Form()]):
+    try:
+        model = rename_file_record(file_id, filename)
+    except FileServiceError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return redirect(f"/admin/records/{model.record_id}" if model.record_id else "/admin/files", response)
+
+
+@router.post("/files/{file_id}/delete")
+def delete_file_page(file_id: str, response: Response, _: Annotated[str, Depends(require_admin)]):
+    model = get_file_metadata(file_id)
+    if model is None or model.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    location = f"/admin/records/{model.record_id}" if model.record_id else "/admin/files"
+    try:
+        delete_file_record(file_id)
+    except FileServiceError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return redirect(location, response)
 
 
 @router.get("/tokens", response_class=HTMLResponse)

@@ -18,7 +18,7 @@
                 <td>{{ r.resource }}</td>
                 <td><pre style="max-width: 300px; overflow: hidden;">{{ r.data|pprint }}</pre></td>
                 <td>{{ r.created_at[:19] }}</td>
-                <td><code style="font-size: 0.75em;">{{ r.id }}</code></td>
+                <td><a href="/admin/records/{{ r.id }}"><code style="font-size: 0.75em;">{{ r.id }}</code></a></td>
             </tr>
             {% endfor %}
         </tbody>

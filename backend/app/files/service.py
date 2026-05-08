@@ -126,3 +126,21 @@ def delete_file_record(file_id: str) -> None:
         session.commit()
     finally:
         session.close()
+
+
+def rename_file_record(file_id: str, filename: str) -> FileModel:
+    clean_name = filename.strip()
+    if not clean_name:
+        raise FileServiceError("Filename is required")
+
+    session: Session = get_session_factory()()
+    try:
+        model = session.scalar(select(FileModel).where(FileModel.id == file_id))
+        if model is None or model.deleted_at is not None:
+            raise FileServiceError("File not found")
+        model.filename = clean_name
+        session.commit()
+        session.refresh(model)
+        return model
+    finally:
+        session.close()

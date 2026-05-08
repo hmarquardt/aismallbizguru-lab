@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Record - LabBox Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ resource_config.label }} Record</h1>
+        <p class="muted">{{ app.title }} / <code>{{ record.app_id }}</code> / <code>{{ record.resource }}</code></p>
+    </div>
+    <div class="actions">
+        <a class="btn btn-secondary" href="/admin/apps/{{ record.app_id }}/{{ record.resource }}">Back</a>
+        <a class="btn" href="/admin/records/{{ record.id }}/edit">Edit</a>
+        <form method="post" action="/admin/records/{{ record.id }}/delete">
+            <button class="btn btn-danger" type="submit">Delete</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Fields</h2>
+    <table>
+        <tbody>
+            {% for field_name, field in resource_config.fields.items() %}
+            <tr>
+                <th>{{ field.label or field_name }}</th>
+                <td>{{ data.get(field_name, '-') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <h3>Raw JSON</h3>
+    <pre>{{ data|pprint }}</pre>
+</div>
+
+{% if resource_config.files.enabled %}
+<div class="card">
+    <div class="page-header compact">
+        <h2>Files</h2>
+        <form method="post" action="/admin/records/{{ record.id }}/files" enctype="multipart/form-data">
+            <input type="file" name="file" required>
+            <button class="btn" type="submit">Upload</button>
+        </form>
+    </div>
+    {% if files %}
+    <table>
+        <thead>
+            <tr><th>Filename</th><th>Type</th><th>Size</th><th>Object Key</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+            {% for f in files %}
+            <tr>
+                <td>
+                    <form class="inline-form" method="post" action="/admin/files/{{ f.id }}/rename">
+                        <input type="text" name="filename" value="{{ f.filename }}" required>
+                        <button class="btn btn-small" type="submit">Rename</button>
+                    </form>
+                </td>
+                <td>{{ f.content_type or '-' }}</td>
+                <td>{{ f.size_bytes|default(0) }}</td>
+                <td><code style="font-size: 0.75em;">{{ f.object_key }}</code></td>
+                <td>
+                    <a class="btn btn-small" href="/admin/files/{{ f.id }}/download">Download</a>
+                    <form method="post" action="/admin/files/{{ f.id }}/delete" style="display:inline;">
+                        <button class="btn btn-small btn-danger" type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No files attached.</p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

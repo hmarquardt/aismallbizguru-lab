@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}{{ resource_config.label }} - LabBox Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ resource_config.label }}</h1>
+        <p class="muted">{{ app.title }} / <code>{{ app_id }}</code> / <code>{{ resource }}</code></p>
+    </div>
+    <a class="btn" href="/admin/apps/{{ app_id }}/{{ resource }}/new">New Record</a>
+</div>
+
+<div class="card">
+    {% if records %}
+    <table>
+        <thead>
+            <tr>
+                {% for field_name, field in resource_config.fields.items() %}
+                <th>{{ field.label or field_name }}</th>
+                {% endfor %}
+                <th>Updated</th>
+                <th>ID</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+            <tr>
+                {% for field_name, field in resource_config.fields.items() %}
+                <td>{{ record.data.get(field_name, '-') }}</td>
+                {% endfor %}
+                <td>{{ record.updated_at[:19] }}</td>
+                <td><a href="/admin/records/{{ record.id }}"><code style="font-size: 0.75em;">{{ record.id }}</code></a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No records yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

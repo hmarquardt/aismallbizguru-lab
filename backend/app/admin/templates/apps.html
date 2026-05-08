@@ -21,7 +21,11 @@
                 <td><code>{{ app_id }}</code></td>
                 <td>{{ app.title }}</td>
                 <td>{{ app.description or '-' }}</td>
-                <td>{{ app.resources|length }}</td>
+                <td>
+                    {% for resource_id, resource in app.resources.items() %}
+                    <a class="pill-link" href="/admin/apps/{{ app_id }}/{{ resource_id }}">{{ resource.label }}</a>
+                    {% endfor %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
