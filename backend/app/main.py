@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.admin.routes import router as admin_router
@@ -30,6 +31,14 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="LabBox Backend", version=settings.version, lifespan=lifespan)
+    if settings.cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.cors_origins,
+            allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers=["Authorization", "Content-Type"],
+            allow_credentials=False,
+        )
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
     app.include_router(health_router, prefix="/api")
     app.include_router(config_router, prefix="/api")

@@ -32,18 +32,29 @@ In config terms:
 
 The admin UI is generated from `config/apps.yaml`. The API validates incoming records against that same config.
 
-## Important Browser Security Rule
+## Public Browser Access
 
 A GitHub Pages site is public JavaScript. Any API token placed in that JavaScript is public too.
 
-Use one of these patterns:
+For a public static page, do not use browser-held bearer tokens. Instead:
 
-- Public read-only site: expose only data that is safe to read publicly, once the backend supports public read/CORS for that use case.
-- Private/admin tool: require login or keep the tool behind a trusted environment.
-- Write-capable public form: use a small server-side proxy/function to hold the LabBox token, validate input, and call LabBox from the server.
-- Personal tool with a manually pasted token: acceptable for internal experiments, but not for public pages.
+- Add the GitHub Pages origin to `CORS_ALLOW_ORIGINS`.
+- Mark read-safe resources with `auth.default_read: public`.
+- Keep writes token-protected.
 
-Current state: record and file API routes require a bearer token, and the backend does not yet configure CORS. A browser page hosted at `*.github.io` will need CORS support before it can call LabBox directly.
+With that setup, the static page can call public read endpoints directly from the browser without a proxy and without an API token.
+
+Example:
+
+```env
+CORS_ALLOW_ORIGINS=https://hmarquardt.github.io
+```
+
+Multiple origins are comma-separated:
+
+```env
+CORS_ALLOW_ORIGINS=https://hmarquardt.github.io,https://example.com
+```
 
 ## Creating a New Project
 
@@ -57,7 +68,7 @@ apps:
     title: Portfolio
     description: Public portfolio content managed from LabBox.
     auth:
-      default_read: private
+      default_read: public
       default_write: token
     resources:
       projects:
@@ -216,18 +227,17 @@ curl https://lab.aismallbizguru.com/api/files/$FILE_ID \
 
 ## GitHub Pages Example
 
-This is the shape of a direct browser call once CORS and the chosen auth model are in place:
+This is a direct public browser call. It requires:
+
+- `CORS_ALLOW_ORIGINS` includes the GitHub Pages origin.
+- The app has `auth.default_read: public`.
 
 ```html
 <script>
 const API_BASE = "https://lab.aismallbizguru.com/api";
 
 async function loadProjects() {
-  const response = await fetch(`${API_BASE}/portfolio/projects`, {
-    headers: {
-      Authorization: `Bearer ${window.LABBOX_TOKEN}`
-    }
-  });
+  const response = await fetch(`${API_BASE}/portfolio/projects`);
 
   if (!response.ok) {
     throw new Error(`LabBox request failed: ${response.status}`);
@@ -239,7 +249,7 @@ async function loadProjects() {
 </script>
 ```
 
-For a public GitHub Pages page, do not hard-code `window.LABBOX_TOKEN` in the repo. Prefer a public-read API mode or a small server-side proxy.
+Do not hard-code a LabBox token in a public GitHub Pages repo. Public static pages should read public resources without a token.
 
 ## Recommended First Static Site Setup
 
@@ -248,8 +258,7 @@ For the first GitHub Pages integration, use this architecture:
 ```text
 GitHub Pages
   -> static HTML/CSS/JS
-  -> server-side proxy or future public-read LabBox route
-  -> LabBox API
+  -> LabBox public read API
   -> SQLite records and MinIO files
 ```
 
@@ -258,7 +267,7 @@ Build order:
 1. Define the project and resources in `config/apps.yaml`.
 2. Create sample records in the admin UI.
 3. Confirm the API response shape with `curl`.
-4. Add CORS/public-read support or create a small proxy.
+4. Set `CORS_ALLOW_ORIGINS` for the GitHub Pages origin.
 5. Fetch records from the static page.
 6. Add file rendering once record listing is stable.
 
@@ -309,8 +318,8 @@ Use IDs in fields, such as `client_id`, when one resource references another. La
 
 ## Current Limitations to Know
 
-- Browser CORS support needs to be added before GitHub Pages can call the API directly.
-- Static sites cannot keep bearer tokens secret.
+- Static sites cannot keep bearer tokens secret, so public browser reads must use `default_read: public`.
+- Writes still require bearer tokens.
 - Logical resources are config-driven, not physical SQLite tables.
 - Records are JSON documents; field validation is intentionally lightweight.
 - File delete removes the object from storage and soft-deletes metadata.

@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.tokens import hash_token
+from app.config.loader import get_registry
 from app.db.models import ApiTokenModel
 from app.db.session import get_session_factory
 from app.settings import get_settings
@@ -64,6 +65,18 @@ def check_scope(token: ApiTokenModel, app_id: str, required_level: str = "write"
         status_code=status.HTTP_403_FORBIDDEN,
         detail=f"Insufficient scope for {app_id}",
     )
+
+
+def check_read_access(token: ApiTokenModel | None, app_id: str) -> None:
+    app = get_registry().get_app(app_id)
+    if app is not None and app.auth.default_read == "public":
+        return
+    if token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing bearer token",
+        )
+    check_scope(token, app_id, "read")
 
 
 def get_admin_session(

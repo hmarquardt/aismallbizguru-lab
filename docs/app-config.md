@@ -10,7 +10,7 @@ apps:
     title: Junk Drawer
     description: General-purpose scratchpad app.
     auth:
-      default_read: private
+      default_read: public
       default_write: token
     resources:
       notes:
@@ -45,3 +45,5 @@ list
 ```
 
 Config validates at app startup. Unknown apps or resources return API errors instead of silently creating data.
+
+Set `default_read: public` only for data that can be fetched directly from public browser clients. Writes remain token-protected with `default_write: token`.

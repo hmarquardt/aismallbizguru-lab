@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     base_url: AnyUrl = Field(default="https://lab.aismallbizguru.com", alias="BASE_URL")
     sqlite_path: str = Field(default="../data/sqlite/labbox.db", alias="SQLITE_PATH")
     app_config_path: str = Field(default="../config/apps.yaml", alias="APP_CONFIG_PATH")
+    cors_allow_origins: str = Field(default="", alias="CORS_ALLOW_ORIGINS")
     version: str = "0.1.0"
 
     admin_password_hash: str | None = Field(default=None, alias="ADMIN_PASSWORD_HASH")
@@ -28,6 +29,10 @@ class Settings(BaseSettings):
     @property
     def host(self) -> str:
         return self.base_url.host or "lab.aismallbizguru.com"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]
 
 
 @lru_cache

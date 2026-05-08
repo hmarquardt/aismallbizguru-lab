@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.auth.tokens import generate_token
+from app.config.loader import clear_registry_cache
 from app.db.models import ApiTokenModel, utc_now
 from app.db.session import clear_engine_cache, get_session_factory
 from app.main import app
@@ -11,6 +12,7 @@ from app.settings import get_settings
 @pytest.fixture(autouse=True)
 def reset_settings():
     get_settings.cache_clear()
+    clear_registry_cache()
     clear_engine_cache()
 
 
@@ -138,4 +140,76 @@ def test_unauthorized_write(client):
 
 def test_unauthorized_read(client):
     response = client.get("/api/junk-drawer/notes")
+    assert response.status_code == 401
+
+
+def test_public_read_resource_allows_unauthenticated_list_and_get(tmp_path, monkeypatch):
+    config_path = tmp_path / "apps.yaml"
+    config_path.write_text(
+        """
+apps:
+  public-site:
+    title: Public Site
+    auth:
+      default_read: public
+      default_write: token
+    resources:
+      posts:
+        label: Posts
+        fields:
+          title:
+            type: string
+            required: true
+""",
+    )
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("APP_CONFIG_PATH", str(config_path))
+    get_settings.cache_clear()
+    clear_registry_cache()
+    clear_engine_cache()
+
+    from app.db.init_db import init_db
+    from app.records.service import create_record
+
+    init_db()
+    record = create_record("public-site", "posts", {"title": "Published"})
+
+    with TestClient(app) as public_client:
+        list_response = public_client.get("/api/public-site/posts")
+        get_response = public_client.get(f"/api/public-site/posts/{record.id}")
+
+    assert list_response.status_code == 200
+    assert list_response.json()["records"][0]["data"]["title"] == "Published"
+    assert get_response.status_code == 200
+    assert get_response.json()["data"]["title"] == "Published"
+
+
+def test_public_read_does_not_allow_unauthenticated_write(tmp_path, monkeypatch):
+    config_path = tmp_path / "apps.yaml"
+    config_path.write_text(
+        """
+apps:
+  public-site:
+    title: Public Site
+    auth:
+      default_read: public
+      default_write: token
+    resources:
+      posts:
+        label: Posts
+        fields:
+          title:
+            type: string
+            required: true
+""",
+    )
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("APP_CONFIG_PATH", str(config_path))
+    get_settings.cache_clear()
+    clear_registry_cache()
+    clear_engine_cache()
+
+    with TestClient(app) as public_client:
+        response = public_client.post("/api/public-site/posts", json={"data": {"title": "Nope"}})
+
     assert response.status_code == 401

@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.auth.dependencies import check_scope, get_required_token
+from app.auth.dependencies import check_read_access, check_scope, get_optional_token, get_required_token
 from app.db.models import ApiTokenModel
 from app.records.schemas import RecordCreate, RecordListOut, RecordOut, RecordUpdate
 from app.records.service import RecordError, create_record, get_record, list_records, soft_delete_record, update_record
@@ -29,9 +29,9 @@ def _record_out_from_model(model) -> RecordOut:
 def record_list(
     app_id: str,
     resource: str,
-    token: Annotated[ApiTokenModel, Depends(get_required_token)],
+    token: Annotated[ApiTokenModel | None, Depends(get_optional_token)],
 ) -> RecordListOut:
-    check_scope(token, app_id, "read")
+    check_read_access(token, app_id)
     try:
         records = list_records(app_id, resource)
     except RecordError as e:
@@ -62,9 +62,9 @@ def record_get(
     app_id: str,
     resource: str,
     record_id: str,
-    token: Annotated[ApiTokenModel, Depends(get_required_token)],
+    token: Annotated[ApiTokenModel | None, Depends(get_optional_token)],
 ) -> RecordOut:
-    check_scope(token, app_id, "read")
+    check_read_access(token, app_id)
     model = get_record(record_id)
     if model is None or model.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")

@@ -80,6 +80,7 @@ Set:
 ```env
 LABBOX_SITE_HOST=lab.aismallbizguru.com
 BASE_URL=https://lab.aismallbizguru.com
+CORS_ALLOW_ORIGINS=https://hmarquardt.github.io
 R2_BUCKET=lab-aismallbizguru-backups
 R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 RESTIC_REPOSITORY=s3:https://<account-id>.r2.cloudflarestorage.com/lab-aismallbizguru-backups

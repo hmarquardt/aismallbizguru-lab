@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
-from app.auth.dependencies import check_scope, get_required_token
+from app.auth.dependencies import check_read_access, check_scope, get_optional_token, get_required_token
 from app.db.models import ApiTokenModel
 from app.files.schemas import FileListOut, FileOut
 from app.files.service import FileServiceError, create_file, delete_file_record, get_file_metadata, list_files
@@ -37,9 +37,9 @@ def list_record_files(
     app_id: str,
     resource: str,
     record_id: str,
-    token: Annotated[ApiTokenModel, Depends(get_required_token)],
+    token: Annotated[ApiTokenModel | None, Depends(get_optional_token)],
 ) -> FileListOut:
-    check_scope(token, app_id, "read")
+    check_read_access(token, app_id)
     try:
         files = list_files(app_id, resource, record_id)
         return FileListOut(files=[FileOut.from_row(f) for f in files], total=len(files))
@@ -50,16 +50,13 @@ def list_record_files(
 @router.get("/files/{file_id}")
 def download_file(
     file_id: str,
-    token: Annotated[ApiTokenModel | None, Depends(get_required_token)] = None,
+    token: Annotated[ApiTokenModel | None, Depends(get_optional_token)] = None,
 ) -> StreamingResponse:
-    if token is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
-
     model = get_file_metadata(file_id)
     if model is None or model.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
-    check_scope(token, model.app_id, "read")
+    check_read_access(token, model.app_id)
 
     try:
         data_stream = get_file(model.object_key)
