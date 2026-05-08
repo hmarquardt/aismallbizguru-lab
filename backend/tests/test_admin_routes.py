@@ -169,10 +169,14 @@ def test_admin_can_delete_file(tmp_path, monkeypatch) -> None:
             session.close()
 
         client.cookies.set("session", "test-session")
-        response = client.post("/admin/files/admin-file-delete/delete", follow_redirects=False)
+        response = client.post(
+            "/admin/files/admin-file-delete/delete",
+            data={"next_url": "/admin/files"},
+            follow_redirects=False,
+        )
 
     assert response.status_code == 303
-    assert response.headers["Location"] == f"/admin/records/{record.id}"
+    assert response.headers["Location"] == "/admin/files"
 
     session = get_session_factory()()
     try:

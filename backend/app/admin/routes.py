@@ -348,11 +348,16 @@ def rename_file_page(file_id: str, response: Response, _: Annotated[str, Depends
 
 
 @router.post("/files/{file_id}/delete")
-def delete_file_page(file_id: str, response: Response, _: Annotated[str, Depends(require_admin)]):
+def delete_file_page(
+    file_id: str,
+    response: Response,
+    _: Annotated[str, Depends(require_admin)],
+    next_url: Annotated[str, Form()] = "/admin/files",
+):
     model = get_file_metadata(file_id)
     if model is None or model.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-    location = f"/admin/records/{model.record_id}" if model.record_id else "/admin/files"
+    location = next_url if next_url.startswith("/") and not next_url.startswith("//") else "/admin/files"
     try:
         delete_file_record(file_id)
     except FileServiceError as exc:

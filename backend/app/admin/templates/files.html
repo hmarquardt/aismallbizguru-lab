@@ -27,10 +27,11 @@
                 <td>{{ f.content_type or '-' }}</td>
                 <td>{{ f.size_bytes|default(0) }}</td>
                 <td>{{ f.created_at[:19] }}</td>
-                <td>
+                <td class="file-actions-cell">
                     <div class="icon-actions">
                         <a class="icon-btn" href="/admin/files/{{ f.id }}/download" title="Download" aria-label="Download">&darr;</a>
                         <form method="post" action="/admin/files/{{ f.id }}/delete">
+                            <input type="hidden" name="next_url" value="/admin/files">
                             <button class="icon-btn icon-btn-danger" type="submit" title="Delete" aria-label="Delete">&times;</button>
                         </form>
                     </div>

@@ -244,15 +244,24 @@ tr:hover {
     border-radius: 4px;
 }
 
-.icon-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
+.file-actions-cell {
+    min-width: 4.75rem;
     white-space: nowrap;
 }
 
+.icon-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    white-space: nowrap;
+    width: max-content;
+}
+
 .icon-actions form {
-    display: inline-flex;
+    display: flex;
+    flex-direction: row;
     margin: 0;
 }
 
