@@ -51,3 +51,11 @@ Console: http://localhost:9011
 Never commit `.env` or real credentials. Only `.env.example` is intended to be tracked.
 
 Required deployment secrets include admin password/session values, API token pepper, MinIO/S3 credentials, Cloudflare R2 credentials, and the Restic password.
+
+## Docs
+
+- [App configuration](docs/app-config.md)
+- [API examples](docs/api-examples.md)
+- [Static site backend guide](docs/static-site-backend-guide.md)
+- [Deployment](docs/deployment.md)
+- [Backup and restore](docs/backup-restore.md)
