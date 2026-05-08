@@ -19,6 +19,8 @@ def test_admin_login_page_imports_and_renders(tmp_path, monkeypatch) -> None:
 
 def test_json_admin_login_lives_under_api_admin(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.delenv("ADMIN_SESSION_SECRET", raising=False)
+    monkeypatch.delenv("ADMIN_PASSWORD_HASH", raising=False)
     get_settings.cache_clear()
     clear_engine_cache()
 

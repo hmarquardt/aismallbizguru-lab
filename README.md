@@ -39,6 +39,13 @@ Health check:
 curl http://localhost:8010/api/health
 ```
 
+Local MinIO ports:
+
+```text
+S3 API: http://localhost:9010
+Console: http://localhost:9011
+```
+
 ## Secrets
 
 Never commit `.env` or real credentials. Only `.env.example` is intended to be tracked.

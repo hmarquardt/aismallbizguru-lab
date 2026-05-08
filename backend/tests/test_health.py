@@ -7,6 +7,8 @@ from app.settings import get_settings
 
 def test_health_endpoint(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("BASE_URL", "https://labs.smallbizguru.com")
+    monkeypatch.setenv("STORAGE_HEALTH_ENABLED", "false")
     get_settings.cache_clear()
     clear_engine_cache()
     client = TestClient(app)
