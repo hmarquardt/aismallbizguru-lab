@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Records - LabBox Admin{% endblock %}
+
+{% block content %}
+<h1>Recent Records</h1>
+
+<div class="card">
+    {% if records %}
+    <table>
+        <thead>
+            <tr><th>App</th><th>Resource</th><th>Data</th><th>Created</th><th>ID</th></tr>
+        </thead>
+        <tbody>
+            {% for r in records %}
+            <tr>
+                <td><code>{{ r.app_id }}</code></td>
+                <td>{{ r.resource }}</td>
+                <td><pre style="max-width: 300px; overflow: hidden;">{{ r.data|pprint }}</pre></td>
+                <td>{{ r.created_at[:19] }}</td>
+                <td><code style="font-size: 0.75em;">{{ r.id }}</code></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No records yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,1 @@
+"""LabBox Backend application package."""

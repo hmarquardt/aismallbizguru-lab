@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LabBox Admin{% endblock %}</title>
+    <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+    <nav>
+        <a href="/admin/">Dashboard</a>
+        <a href="/admin/apps">Apps</a>
+        <a href="/admin/records">Records</a>
+        <a href="/admin/files">Files</a>
+        <a href="/admin/tokens">Tokens</a>
+        <a href="/admin/backups">Backups</a>
+        <form method="post" action="/admin/logout">
+            <button type="submit">Logout</button>
+        </form>
+    </nav>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

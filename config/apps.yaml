@@ -1,0 +1,27 @@
+apps:
+  junk-drawer:
+    title: Junk Drawer
+    description: General-purpose scratchpad app for LabBox experiments.
+    auth:
+      default_read: private
+      default_write: token
+    resources:
+      notes:
+        label: Notes
+        fields:
+          title:
+            type: string
+            required: true
+          body:
+            type: text
+          tags:
+            type: list
+          pinned:
+            type: boolean
+        files:
+          enabled: true
+          allowed_types:
+            - image/png
+            - image/jpeg
+            - application/json
+          max_size_mb: 25

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Backups - LabBox Admin{% endblock %}
+
+{% block content %}
+<h1>Backup History</h1>
+
+<div class="card">
+    <form method="post" action="/admin/backups/run">
+        <button type="submit" class="btn">Run Backup Now</button>
+    </form>
+</div>
+
+<div class="card">
+    {% if backup_runs %}
+    <table>
+        <thead>
+            <tr><th>Status</th><th>Started</th><th>Finished</th><th>Snapshot</th><th>Bytes</th><th>Error</th></tr>
+        </thead>
+        <tbody>
+            {% for b in backup_runs %}
+            <tr>
+                <td>
+                    {% if b.status == 'success' %}
+                    <span class="status-ok">Success</span>
+                    {% elif b.status == 'running' %}
+                    <span class="status-warning">Running</span>
+                    {% else %}
+                    <span class="status-error">Failed</span>
+                    {% endif %}
+                </td>
+                <td>{{ b.started_at[:19] }}</td>
+                <td>{{ b.finished_at[:19] if b.finished_at else '-' }}</td>
+                <td><code style="font-size: 0.75em;">{{ b.snapshot_id or '-' }}</code></td>
+                <td>{{ b.bytes_added|default(0) }}</td>
+                <td>{{ b.error or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No backup runs recorded yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

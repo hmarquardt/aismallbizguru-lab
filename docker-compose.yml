@@ -1,0 +1,73 @@
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - ${LABBOX_ENV_FILE:-.env}
+    volumes:
+      - ./config:/config:ro
+      - ./data:/data
+      - ./backup-staging:/backup-staging
+      - ./scripts:/app/scripts:ro
+      - ./docker-compose.yml:/opt/labbox/docker-compose.yml:ro
+      - ./Caddyfile:/opt/labbox/Caddyfile:ro
+    depends_on:
+      - minio
+
+  worker:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - ${LABBOX_ENV_FILE:-.env}
+    command: ["python", "-m", "app.jobs.worker"]
+    volumes:
+      - ./config:/config:ro
+      - ./data:/data
+      - ./backup-staging:/backup-staging
+      - ./scripts:/app/scripts:ro
+      - ./docker-compose.yml:/opt/labbox/docker-compose.yml:ro
+      - ./Caddyfile:/opt/labbox/Caddyfile:ro
+    depends_on:
+      - minio
+
+  minio:
+    image: minio/minio:RELEASE.2026-04-19T14-39-29Z
+    restart: unless-stopped
+    env_file:
+      - ${LABBOX_ENV_FILE:-.env}
+    command: ["server", "/data", "--console-address", ":9001"]
+    volumes:
+      - ./data/minio:/data
+
+  backup:
+    image: restic/restic:0.18.0
+    profiles:
+      - backup
+    env_file:
+      - ${LABBOX_ENV_FILE:-.env}
+    volumes:
+      - ./config:/opt/labbox/config:ro
+      - ./data:/opt/labbox/data:ro
+      - ./backup-staging:/backup-staging
+      - ./docker-compose.yml:/opt/labbox/docker-compose.yml:ro
+      - ./Caddyfile:/opt/labbox/Caddyfile:ro
+      - ./scripts:/app/scripts:ro
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - LabBox Admin{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="stats">
+    <div class="stat">
+        <div class="stat-value">{{ version }}</div>
+        <div class="stat-label">Version</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value">{{ host }}</div>
+        <div class="stat-label">Host</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value">
+            <span class="status-ok">&#10003;</span>
+        </div>
+        <div class="stat-label">Database</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value">
+            <span class="status-ok">&#10003;</span>
+        </div>
+        <div class="stat-label">Storage</div>
+    </div>
+</div>
+
+<div class="stats">
+    <div class="stat">
+        <div class="stat-value">{{ app_count }}</div>
+        <div class="stat-label">Configured Apps</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value">{{ record_count }}</div>
+        <div class="stat-label">Records</div>
+    </div>
+    <div class="stat">
+        <div class="stat-value">{{ file_count }}</div>
+        <div class="stat-label">Files</div>
+    </div>
+</div>
+
+{% if backup %}
+<h2>Last Backup</h2>
+<div class="card">
+    <p>
+        Status: <span class="status-{{ 'ok' if backup.status == 'success' else 'error' }}">{{ backup.status }}</span><br>
+        Started: {{ backup.started_at }}<br>
+        {% if backup.finished_at %}Finished: {{ backup.finished_at }}<br>{% endif %}
+        {% if backup.snapshot_id %}Snapshot: {{ backup.snapshot_id }}<br>{% endif %}
+        {% if backup.error %}Error: {{ backup.error }}{% endif %}
+    </p>
+</div>
+{% else %}
+<h2>Backups</h2>
+<div class="card">
+    <p class="status-warning">No backups recorded yet.</p>
+</div>
+{% endif %}
+{% endblock %}

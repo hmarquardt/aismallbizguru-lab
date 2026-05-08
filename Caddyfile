@@ -1,0 +1,23 @@
+{
+	email admin@smallbizguru.com
+}
+
+labs.smallbizguru.com {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle /admin* {
+		reverse_proxy api:8000
+	}
+
+	handle /static/* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		redir /admin/ 302
+	}
+}

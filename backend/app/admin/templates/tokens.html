@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}API Tokens - LabBox Admin{% endblock %}
+
+{% block content %}
+<h1>API Tokens</h1>
+
+{% if new_token %}
+<div class="card" style="background: #fef3cd; border: 2px solid #ffc107;">
+    <h2 style="color: #856404;">Token Created — Save Now!</h2>
+    <p style="font-size: 1.2em;">This token will <strong>never</strong> be shown again after this page.</p>
+    <p><code style="font-size: 1.1em; word-break: break-all; background: white; padding: 0.5rem; border-radius: 4px; display: block;">{{ new_token }}</code></p>
+    <button class="btn" onclick="navigator.clipboard.writeText('{{ new_token }}')">Copy to Clipboard</button>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Create Token</h2>
+    <form method="post" action="/admin/tokens">
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div class="form-group">
+            <label for="scopes">Scopes (JSON)</label>
+            <textarea id="scopes" name="scopes" rows="3" placeholder='{"junk-drawer": ["read", "write"]}'></textarea>
+        </div>
+        <button type="submit" class="btn">Create Token</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Active Tokens</h2>
+    {% if tokens %}
+    <table>
+        <thead>
+            <tr><th>Name</th><th>Token</th><th>Scopes</th><th>Created</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+            {% for t in tokens %}
+            <tr>
+                <td>{{ t.name }}</td>
+                <td><code>{{ t.masked }}</code></td>
+                <td><pre style="max-width: 200px;">{{ t.scopes|pprint }}</pre></td>
+                <td>{{ t.created_at[:19] }}</td>
+                <td>
+                    {% if t.revoked_at %}
+                    <span class="status-error">Revoked</span>
+                    {% else %}
+                    <span class="status-ok">Active</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if not t.revoked_at %}
+                    <form method="post" action="/admin/tokens/{{ t.id }}/revoke" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">Revoke</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No tokens yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

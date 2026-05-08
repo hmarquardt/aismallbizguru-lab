@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Files - LabBox Admin{% endblock %}
+
+{% block content %}
+<h1>Files</h1>
+
+<div class="card">
+    {% if files %}
+    <table>
+        <thead>
+            <tr><th>Filename</th><th>App</th><th>Resource</th><th>Record</th><th>Type</th><th>Size</th><th>Created</th></tr>
+        </thead>
+        <tbody>
+            {% for f in files %}
+            <tr>
+                <td>{{ f.filename }}</td>
+                <td><code>{{ f.app_id }}</code></td>
+                <td>{{ f.resource or '-' }}</td>
+                <td><code style="font-size: 0.75em;">{{ f.record_id or '-' }}</code></td>
+                <td>{{ f.content_type or '-' }}</td>
+                <td>{{ f.size_bytes|default(0) }}</td>
+                <td>{{ f.created_at[:19] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No files yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

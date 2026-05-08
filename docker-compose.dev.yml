@@ -1,0 +1,44 @@
+services:
+  api:
+    build:
+      context: ./backend
+    env_file:
+      - .env.example
+    environment:
+      APP_ENV: development
+      BASE_URL: http://localhost:8010
+      SQLITE_PATH: /data/sqlite/labbox.db
+      APP_CONFIG_PATH: /config/apps.yaml
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: labbox-dev
+      S3_SECRET_KEY: labbox-dev-password
+      MINIO_BUCKET: labbox-assets
+      MINIO_AUTO_INIT: "true"
+      STORAGE_HEALTH_ENABLED: "true"
+      BACKUP_SCRIPT: /app/scripts/backup_now.sh
+      BACKUP_SCHEDULE_TIME: "03:30"
+    ports:
+      - "8010:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/tests:/app/tests
+      - ./scripts:/app/scripts:ro
+      - ./config:/config:ro
+      - ./data/sqlite:/data/sqlite
+    depends_on:
+      - minio
+
+  minio:
+    image: minio/minio:RELEASE.2026-04-19T14-39-29Z
+    environment:
+      MINIO_ROOT_USER: labbox-dev
+      MINIO_ROOT_PASSWORD: labbox-dev-password
+    command: ["server", "/data", "--console-address", ":9001"]
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_dev_data:/data
+
+volumes:
+  minio_dev_data:
