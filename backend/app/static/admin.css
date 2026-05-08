@@ -244,6 +244,48 @@ tr:hover {
     border-radius: 4px;
 }
 
+.icon-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+}
+
+.icon-actions form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    box-sizing: border-box;
+    border: 1px solid #cfd8dc;
+    border-radius: 4px;
+    background: #fff;
+    color: #2c3e50;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 1.15rem;
+    line-height: 1;
+}
+
+.icon-btn:hover {
+    background: #ecf0f1;
+}
+
+.icon-btn-danger {
+    border-color: #f1b0a8;
+    color: #c0392b;
+}
+
+.icon-btn-danger:hover {
+    background: #fee;
+}
+
 pre {
     white-space: pre-wrap;
     word-break: break-word;

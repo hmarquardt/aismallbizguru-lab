@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.db.init_db import init_db
-from app.db.models import RecordModel
+from app.db.models import FileModel, RecordModel, utc_now
 from app.db.session import clear_engine_cache, get_session_factory
 from app.main import app
 from app.records.service import create_record
@@ -131,6 +131,52 @@ def test_admin_can_soft_delete_record(tmp_path, monkeypatch) -> None:
     session = get_session_factory()()
     try:
         deleted = session.scalar(select(RecordModel).where(RecordModel.id == record.id))
+        assert deleted is not None
+        assert deleted.deleted_at is not None
+    finally:
+        session.close()
+
+
+def test_admin_can_delete_file(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    monkeypatch.setattr("app.files.service.delete_file", lambda _object_key: None)
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        record = create_record("junk-drawer", "notes", {"title": "File Owner"})
+        session = get_session_factory()()
+        try:
+            session.add(
+                FileModel(
+                    id="admin-file-delete",
+                    app_id="junk-drawer",
+                    resource="notes",
+                    record_id=record.id,
+                    bucket="labbox-assets",
+                    object_key=f"junk-drawer/{record.id}/admin-file-delete.webp",
+                    filename="admin-file-delete.webp",
+                    content_type="image/webp",
+                    size_bytes=12,
+                    checksum="abc123",
+                    created_at=utc_now(),
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        client.cookies.set("session", "test-session")
+        response = client.post("/admin/files/admin-file-delete/delete", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["Location"] == f"/admin/records/{record.id}"
+
+    session = get_session_factory()()
+    try:
+        deleted = session.scalar(select(FileModel).where(FileModel.id == "admin-file-delete"))
         assert deleted is not None
         assert deleted.deleted_at is not None
     finally:

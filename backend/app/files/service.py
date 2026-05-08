@@ -108,20 +108,19 @@ def get_file_metadata(file_id: str) -> FileModel | None:
 
 
 def delete_file_record(file_id: str) -> None:
-    model = get_file_metadata(file_id)
-    if model is None:
-        raise FileServiceError("File not found")
-
-    if model.deleted_at is not None:
-        raise FileServiceError("File already deleted")
-
-    try:
-        delete_file(model.object_key)
-    except StorageError:
-        pass
-
     session: Session = get_session_factory()()
     try:
+        model = session.scalar(select(FileModel).where(FileModel.id == file_id))
+        if model is None:
+            raise FileServiceError("File not found")
+        if model.deleted_at is not None:
+            raise FileServiceError("File already deleted")
+
+        try:
+            delete_file(model.object_key)
+        except StorageError:
+            pass
+
         model.deleted_at = utc_now()
         session.commit()
     finally:
