@@ -58,6 +58,7 @@ Required deployment secrets include admin password/session values, API token pep
 - [API examples](docs/api-examples.md)
 - [Static site backend guide](docs/static-site-backend-guide.md)
 - [Top Hat Ferals backend guide](docs/top-hat-ferals.md)
+- [Wildlife Field Recorder backend guide](docs/wildlife-field-recorder-backend.md)
 - [Deployment](docs/deployment.md)
 - [Deploy runbook](deploy.md)
 - [Backup and restore](docs/backup-restore.md)

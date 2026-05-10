@@ -157,3 +157,155 @@ apps:
             - image/jpeg
             - image/webp
           max_size_mb: 25
+
+  wildlife-field-recorder:
+    title: Wildlife Field Recorder
+    description: Offline-first field observation recorder for wildlife sightings, voice notes, GPS coordinates, weather snapshots, transcription, classification, photo attachments, trip grouping, route mapping, review, and export.
+    # WARNING: Public read is NOT recommended for this app because observations
+    # include exact GPS coordinates and sensitive wildlife locations.
+    auth:
+      default_read: token
+      default_write: token
+    resources:
+      observations:
+        label: Observations
+        fields:
+          localId:
+            type: string
+            required: true
+          tripLocalId:
+            type: string
+          backendTripId:
+            type: string
+          createdAt:
+            type: datetime
+            required: true
+          startedAt:
+            type: datetime
+          stoppedAt:
+            type: datetime
+          durationSeconds:
+            type: number
+          latitude:
+            type: number
+          longitude:
+            type: number
+          accuracyMeters:
+            type: number
+          altitude:
+            type: number
+          heading:
+            type: number
+          speed:
+            type: number
+          gpsStatus:
+            type: string
+          weatherStatus:
+            type: string
+          weatherFetchedAt:
+            type: datetime
+          weatherRaw:
+            type: json
+          transcript:
+            type: text
+          subjectCommonName:
+            type: string
+          subjectScientificName:
+            type: string
+          subjectConfidence:
+            type: number
+          category:
+            type: string
+          categoryConfidence:
+            type: number
+          behavior:
+            type: text
+          habitat:
+            type: text
+          count:
+            type: integer
+          tags:
+            type: list
+          summary:
+            type: text
+          userNoteText:
+            type: text
+          llmRaw:
+            type: json
+          photoCount:
+            type: integer
+          reviewStatus:
+            type: string
+          submitStatus:
+            type: string
+          appVersion:
+            type: string
+        files:
+          enabled: true
+          allowed_types:
+            - audio/webm
+            - audio/ogg
+            - audio/mpeg
+            - audio/mp4
+            - audio/wav
+            - application/octet-stream
+            - image/jpeg
+            - image/png
+            - image/webp
+            - image/heic
+            - image/heif
+          max_size_mb: 50
+      trips:
+        label: Trips
+        fields:
+          localTripId:
+            type: string
+            required: true
+          title:
+            type: string
+            required: true
+          startedAt:
+            type: datetime
+            required: true
+          endedAt:
+            type: datetime
+          observationLocalIds:
+            type: list
+          observationCount:
+            type: integer
+          categories:
+            type: list
+          subjectSummaries:
+            type: list
+          centerLatitude:
+            type: number
+          centerLongitude:
+            type: number
+          boundingBox:
+            type: json
+          totalDistanceEstimateMiles:
+            type: number
+          weatherSummary:
+            type: text
+          tripSummary:
+            type: text
+          habitats:
+            type: list
+          notableMoments:
+            type: list
+          needsReview:
+            type: boolean
+          reviewStatus:
+            type: string
+          routeGeoJson:
+            type: json
+          appVersion:
+            type: string
+        files:
+          enabled: true
+          allowed_types:
+            - application/json
+            - application/geo+json
+            - application/gpx+xml
+            - application/octet-stream
+          max_size_mb: 25

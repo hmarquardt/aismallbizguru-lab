@@ -292,3 +292,205 @@ def test_record_photo_url_is_not_overwritten(client, auth_token):
 
     assert response.status_code == 200
     assert response.json()["data"]["photo_url"] == "https://example.com/photo.jpg"
+
+
+@pytest.fixture
+def wfr_auth_token(client, tmp_path, monkeypatch):
+    from app.db.init_db import init_db
+    init_db()
+
+    raw, token_hash = generate_token()
+    session = get_session_factory()()
+    try:
+        token = ApiTokenModel(
+            id="test-token-wfr",
+            name="WFR Test Token",
+            token_hash=token_hash,
+            scopes_json='{"wildlife-field-recorder": ["read", "write"]}',
+            created_at=utc_now(),
+        )
+        session.add(token)
+        session.commit()
+    finally:
+        session.close()
+
+    return raw
+
+
+def test_create_wildlife_observation(client, wfr_auth_token):
+    response = client.post(
+        "/api/wildlife-field-recorder/observations",
+        json={
+            "data": {
+                "localId": "local-demo-1",
+                "createdAt": "2026-05-10T20:15:00Z",
+                "latitude": 38.3553,
+                "longitude": -87.5675,
+                "gpsStatus": "ok",
+                "transcript": "Great blue heron near the lake.",
+                "subjectCommonName": "Great Blue Heron",
+                "category": "bird",
+                "tags": ["lake", "heron"],
+                "summary": "Great blue heron observed.",
+                "photoCount": 0,
+            }
+        },
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+    assert response.status_code == 201
+    json = response.json()
+    assert json["app_id"] == "wildlife-field-recorder"
+    assert json["resource"] == "observations"
+    assert json["data"]["localId"] == "local-demo-1"
+    assert json["data"]["latitude"] == 38.3553
+
+
+def test_list_wildlife_observations(client, wfr_auth_token):
+    client.post(
+        "/api/wildlife-field-recorder/observations",
+        json={
+            "data": {
+                "localId": "obs-1",
+                "createdAt": "2026-05-10T20:15:00Z",
+                "latitude": 38.3553,
+                "longitude": -87.5675,
+            }
+        },
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+    client.post(
+        "/api/wildlife-field-recorder/observations",
+        json={
+            "data": {
+                "localId": "obs-2",
+                "createdAt": "2026-05-10T21:00:00Z",
+                "latitude": 38.3600,
+                "longitude": -87.5700,
+            }
+        },
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+
+    response = client.get(
+        "/api/wildlife-field-recorder/observations",
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+    assert response.status_code == 200
+    json = response.json()
+    assert json["total"] == 2
+
+
+def test_wildlife_observation_requires_token(client):
+    response = client.post(
+        "/api/wildlife-field-recorder/observations",
+        json={
+            "data": {
+                "localId": "unauthorized",
+                "createdAt": "2026-05-10T20:15:00Z",
+            }
+        },
+    )
+    assert response.status_code == 401
+
+
+def test_create_wildlife_trip(client, wfr_auth_token):
+    response = client.post(
+        "/api/wildlife-field-recorder/trips",
+        json={
+            "data": {
+                "localTripId": "trip-demo-1",
+                "title": "Evening Wildlife Drive",
+                "startedAt": "2026-05-10T20:00:00Z",
+                "endedAt": "2026-05-10T22:15:00Z",
+                "observationLocalIds": ["local-demo-1", "local-demo-2"],
+                "observationCount": 2,
+                "categories": ["bird", "reptile"],
+                "centerLatitude": 38.3553,
+                "centerLongitude": -87.5675,
+                "totalDistanceEstimateMiles": 3.4,
+                "tripSummary": "Evening drive with lakeside bird activity.",
+                "routeGeoJson": {
+                    "type": "FeatureCollection",
+                    "features": [],
+                },
+            }
+        },
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+    assert response.status_code == 201
+    json = response.json()
+    assert json["app_id"] == "wildlife-field-recorder"
+    assert json["resource"] == "trips"
+    assert json["data"]["title"] == "Evening Wildlife Drive"
+    assert json["data"]["routeGeoJson"]["type"] == "FeatureCollection"
+
+
+def test_list_wildlife_trips(client, wfr_auth_token):
+    client.post(
+        "/api/wildlife-field-recorder/trips",
+        json={
+            "data": {
+                "localTripId": "trip-1",
+                "title": "Morning Walk",
+                "startedAt": "2026-05-10T06:00:00Z",
+            }
+        },
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+
+    response = client.get(
+        "/api/wildlife-field-recorder/trips",
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+    assert response.status_code == 200
+    json = response.json()
+    assert json["total"] == 1
+    assert json["records"][0]["data"]["title"] == "Morning Walk"
+
+
+def test_update_trip_route_geojson(client, wfr_auth_token):
+    create_resp = client.post(
+        "/api/wildlife-field-recorder/trips",
+        json={
+            "data": {
+                "localTripId": "trip-geo-1",
+                "title": "Route Test",
+                "startedAt": "2026-05-10T20:00:00Z",
+                "routeGeoJson": {"type": "FeatureCollection", "features": []},
+            }
+        },
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+    record_id = create_resp.json()["id"]
+
+    # PATCH replaces the full data document, so include all required fields
+    response = client.patch(
+        f"/api/wildlife-field-recorder/trips/{record_id}",
+        json={
+            "data": {
+                "localTripId": "trip-geo-1",
+                "title": "Route Test Updated",
+                "startedAt": "2026-05-10T20:00:00Z",
+                "routeGeoJson": {
+                    "type": "FeatureCollection",
+                    "features": [
+                        {
+                            "type": "Feature",
+                            "geometry": {
+                                "type": "LineString",
+                                "coordinates": [[-87.5675, 38.3553], [-87.5680, 38.3560]],
+                            },
+                            "properties": {"name": "Evening Drive Route"},
+                        }
+                    ],
+                }
+            }
+        },
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["data"]["title"] == "Route Test Updated"
+    assert updated["data"]["routeGeoJson"]["type"] == "FeatureCollection"
+    assert len(updated["data"]["routeGeoJson"]["features"]) == 1
+    assert updated["data"]["routeGeoJson"]["features"][0]["geometry"]["type"] == "LineString"
