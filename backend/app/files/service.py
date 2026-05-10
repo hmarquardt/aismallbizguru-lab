@@ -14,6 +14,10 @@ class FileServiceError(RuntimeError):
     pass
 
 
+def _base_content_type(content_type: str) -> str:
+    return content_type.split(";", 1)[0].strip().lower()
+
+
 def _get_file_settings(app_id: str, resource: str) -> dict:
     registry = get_registry()
     app = registry.get_app(app_id)
@@ -60,7 +64,8 @@ def create_file(
 ) -> FileModel:
     file_settings = _get_file_settings(app_id, resource)
 
-    if file_settings["allowed_types"] and content_type not in file_settings["allowed_types"]:
+    allowed_types = {_base_content_type(allowed_type) for allowed_type in file_settings["allowed_types"]}
+    if allowed_types and _base_content_type(content_type) not in allowed_types:
         raise FileServiceError(f"Content type {content_type} not allowed")
 
     max_size = file_settings.get("max_size_mb")

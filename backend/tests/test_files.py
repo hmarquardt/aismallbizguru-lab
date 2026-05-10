@@ -136,6 +136,30 @@ def test_wfr_upload_audio_to_observation(client, wfr_auth_token, monkeypatch):
     assert response.status_code == 201
 
 
+def test_wfr_upload_audio_with_codec_parameter(client, wfr_auth_token, monkeypatch):
+    monkeypatch.setattr("app.files.service.put_file", lambda *args, **kwargs: None)
+    create_resp = client.post(
+        "/api/wildlife-field-recorder/observations",
+        json={
+            "data": {
+                "localId": "audio-codec-test-1",
+                "createdAt": "2026-05-10T20:15:00Z",
+            }
+        },
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+    assert create_resp.status_code == 201
+    record_id = create_resp.json()["id"]
+
+    response = client.post(
+        f"/api/wildlife-field-recorder/observations/{record_id}/files",
+        files={"file": ("observation.webm", b"fake audio data", "audio/webm;codecs=opus")},
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+    assert response.status_code == 201
+    assert response.json()["content_type"] == "audio/webm;codecs=opus"
+
+
 def test_wfr_upload_photo_to_observation(client, wfr_auth_token, monkeypatch):
     monkeypatch.setattr("app.files.service.put_file", lambda *args, **kwargs: None)
     create_resp = client.post(
