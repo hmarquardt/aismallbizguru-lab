@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.db.init_db import init_db
-from app.db.models import FileModel, RecordModel, utc_now
+from app.db.models import ApiTokenModel, FileModel, RecordModel, utc_now
 from app.db.session import clear_engine_cache, get_session_factory
 from app.main import app
 from app.records.service import create_record
@@ -71,6 +71,21 @@ def test_admin_resource_browser_links_from_apps(tmp_path, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert "/admin/apps/junk-drawer/notes" in response.text
+
+
+def test_admin_tokens_page_renders_scope_presets(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        client.cookies.set("session", "test-session")
+        response = client.get("/admin/tokens")
+
+    assert response.status_code == 200
+    assert "Top Hat Ferals read/write" in response.text
+    assert '{"top-hat-ferals": ["read", "write"]}' in response.text
 
 
 def test_admin_can_create_and_edit_record(tmp_path, monkeypatch) -> None:
@@ -183,5 +198,82 @@ def test_admin_can_delete_file(tmp_path, monkeypatch) -> None:
         deleted = session.scalar(select(FileModel).where(FileModel.id == "admin-file-delete"))
         assert deleted is not None
         assert deleted.deleted_at is not None
+    finally:
+        session.close()
+
+
+def test_admin_token_create_saves_json_scopes(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        client.cookies.set("session", "test-session")
+        response = client.post(
+            "/admin/tokens",
+            data={"name": "Top Hat", "scopes": '{"top-hat-ferals": ["read", "write"]}'},
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 303
+
+    session = get_session_factory()()
+    try:
+        token = session.scalar(select(ApiTokenModel).where(ApiTokenModel.name == "Top Hat"))
+        assert token is not None
+        assert token.scopes_json == '{"top-hat-ferals": ["read", "write"]}'
+    finally:
+        session.close()
+
+
+def test_admin_token_create_accepts_shorthand_scopes(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        client.cookies.set("session", "test-session")
+        response = client.post(
+            "/admin/tokens",
+            data={"name": "Top Hat Shorthand", "scopes": "top-hat-ferals:read,top-hat-ferals:write"},
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 303
+
+    session = get_session_factory()()
+    try:
+        token = session.scalar(select(ApiTokenModel).where(ApiTokenModel.name == "Top Hat Shorthand"))
+        assert token is not None
+        assert token.scopes_json == '{"top-hat-ferals": ["read", "write"]}'
+    finally:
+        session.close()
+
+
+def test_admin_token_create_rejects_invalid_scopes(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        client.cookies.set("session", "test-session")
+        response = client.post(
+            "/admin/tokens",
+            data={"name": "Bad Token", "scopes": "{not-json"},
+        )
+
+    assert response.status_code == 200
+    assert "Scopes JSON is invalid" in response.text
+
+    session = get_session_factory()()
+    try:
+        token = session.scalar(select(ApiTokenModel).where(ApiTokenModel.name == "Bad Token"))
+        assert token is None
     finally:
         session.close()

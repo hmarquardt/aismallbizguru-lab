@@ -16,14 +16,26 @@
 
 <div class="card">
     <h2>Create Token</h2>
+    {% if scope_error %}
+    <div class="alert alert-error">{{ scope_error }}</div>
+    {% endif %}
     <form method="post" action="/admin/tokens">
         <div class="form-group">
             <label for="name">Name</label>
-            <input type="text" id="name" name="name" required>
+            <input type="text" id="name" name="name" value="{{ form_name or '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="scope-preset">Scope Preset</label>
+            <select id="scope-preset">
+                <option value="">Custom</option>
+                {% for preset in token_presets %}
+                <option value='{{ preset.scopes }}'>{{ preset.title }} read/write</option>
+                {% endfor %}
+            </select>
         </div>
         <div class="form-group">
             <label for="scopes">Scopes (JSON)</label>
-            <textarea id="scopes" name="scopes" rows="3" placeholder='{"junk-drawer": ["read", "write"]}'></textarea>
+            <textarea id="scopes" name="scopes" rows="3" placeholder='{"top-hat-ferals": ["read", "write"]}'>{{ form_scopes or '' }}</textarea>
         </div>
         <button type="submit" class="btn">Create Token</button>
     </form>
@@ -65,4 +77,11 @@
     <p>No tokens yet.</p>
     {% endif %}
 </div>
+<script>
+document.getElementById("scope-preset").addEventListener("change", function () {
+    if (this.value) {
+        document.getElementById("scopes").value = this.value;
+    }
+});
+</script>
 {% endblock %}

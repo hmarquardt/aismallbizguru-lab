@@ -40,6 +40,72 @@ def render(template_name: str, **context) -> HTMLResponse:
     return HTMLResponse(template.render(**context))
 
 
+def token_presets() -> list[dict[str, str]]:
+    return [
+        {
+            "app_id": app_id,
+            "title": app_config.title,
+            "scopes": json.dumps({app_id: ["read", "write"]}),
+        }
+        for app_id, app_config in get_registry().list_apps().items()
+    ]
+
+
+def parse_token_scopes(raw_scopes: str) -> dict[str, list[str]]:
+    raw_scopes = raw_scopes.strip()
+    if not raw_scopes:
+        return {}
+
+    if raw_scopes.startswith("{"):
+        try:
+            parsed = json.loads(raw_scopes)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Scopes JSON is invalid: {exc.msg}") from exc
+        return normalize_scope_mapping(parsed)
+
+    scopes: dict[str, list[str]] = {}
+    for part in raw_scopes.replace("\n", ",").split(","):
+        item = part.strip()
+        if not item:
+            continue
+        if ":" not in item:
+            raise ValueError("Scope shorthand must use app:level, for example top-hat-ferals:write")
+        app_id, level = [piece.strip() for piece in item.split(":", 1)]
+        if not app_id or not level:
+            raise ValueError("Scope shorthand must include both app and level")
+        add_scope_level(scopes, app_id, level)
+    return scopes
+
+
+def normalize_scope_mapping(parsed: Any) -> dict[str, list[str]]:
+    if not isinstance(parsed, dict):
+        raise ValueError("Scopes must be a JSON object")
+
+    scopes: dict[str, list[str]] = {}
+    for app_id, levels in parsed.items():
+        if not isinstance(app_id, str) or not app_id:
+            raise ValueError("Scope app IDs must be non-empty strings")
+        if isinstance(levels, str):
+            add_scope_level(scopes, app_id, levels)
+            continue
+        if not isinstance(levels, list):
+            raise ValueError(f"Scopes for {app_id} must be a string or list")
+        for level in levels:
+            if not isinstance(level, str):
+                raise ValueError(f"Scopes for {app_id} must contain only strings")
+            add_scope_level(scopes, app_id, level)
+    return scopes
+
+
+def add_scope_level(scopes: dict[str, list[str]], app_id: str, level: str) -> None:
+    level = level.strip()
+    if level not in {"read", "write", "*"}:
+        raise ValueError("Scope levels must be read, write, or *")
+    levels = scopes.setdefault(app_id, [])
+    if level not in levels:
+        levels.append(level)
+
+
 def redirect(location: str, response: Response) -> Response:
     response.headers["Location"] = location
     response.status_code = status.HTTP_303_SEE_OTHER
@@ -377,18 +443,28 @@ def list_tokens_page(_: Annotated[str, Depends(require_admin)], new_token: str |
         "masked": masked_token(t.token_hash),
         "scopes": json.loads(t.scopes_json) if t.scopes_json else {},
         "created_at": t.created_at, "revoked_at": t.revoked_at
-    } for t in tokens], new_token=new_token)
+    } for t in tokens], new_token=new_token, token_presets=token_presets(),
+                  scope_error=None, form_name="", form_scopes="")
 
 
 @router.post("/tokens")
 def create_token_page(response: Response, _: Annotated[str, Depends(require_admin)],
                       name: Annotated[str, Form()], scopes: Annotated[str, Form()] = ""):
-    scopes_json = {}
-    if scopes.strip():
+    try:
+        scopes_json = parse_token_scopes(scopes)
+    except ValueError as exc:
+        session = get_session_factory()()
         try:
-            scopes_json = json.loads(scopes)
-        except json.JSONDecodeError:
-            pass
+            tokens = session.scalars(select(ApiTokenModel).order_by(ApiTokenModel.created_at.desc())).all()
+        finally:
+            session.close()
+        return render("tokens.html", tokens=[{
+            "id": t.id, "name": t.name,
+            "masked": masked_token(t.token_hash),
+            "scopes": json.loads(t.scopes_json) if t.scopes_json else {},
+            "created_at": t.created_at, "revoked_at": t.revoked_at
+        } for t in tokens], new_token=None, token_presets=token_presets(),
+                      scope_error=str(exc), form_name=name, form_scopes=scopes)
 
     raw, token_hash = generate_token()
     session = get_session_factory()()
