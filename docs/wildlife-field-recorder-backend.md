@@ -41,7 +41,7 @@ The browser app stores this token in `localStorage` only when the user enters it
 
 ## CORS
 
-The GitHub Pages origin for the Junk Drawer site is already allowed in `CORS_ALLOW_ORIGINS`:
+The GitHub Pages origin and current custom domains are allowed in `CORS_ALLOW_ORIGINS`:
 
 ```env
 CORS_ALLOW_ORIGINS=https://hmarquardt.github.io,https://tophatferals.com,https://www.tophatferals.com
@@ -96,6 +96,9 @@ curl -X POST "$API_BASE/$APP/observations" \
       "longitude": -87.5675,
       "gpsStatus": "ok",
       "weatherStatus": "ok",
+      "weatherCondition": "cloudy",
+      "temperatureF": 71.0,
+      "barometricPressureHpa": 1012.1,
       "transcript": "Great blue heron standing near the edge of the lake.",
       "subjectCommonName": "Great Blue Heron",
       "category": "bird",
@@ -158,6 +161,27 @@ curl -X POST "$API_BASE/$APP/trips" \
   }'
 ```
 
+### Create trip from clustered observations
+
+Recommended browser workflow:
+
+1. Save individual observations first.
+2. Cluster nearby observations on the page by time and geography.
+3. Ask the user only for a trip name.
+4. Send the selected observation record IDs or local IDs to this endpoint.
+
+```bash
+curl -X POST "$API_BASE/$APP/trips/from-observations" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Cloudy Lake Walk",
+    "observation_local_ids": ["local-demo-1", "local-demo-2"]
+  }'
+```
+
+The backend creates a trip record with observation IDs, local IDs, count, categories, subject summaries, center point, bounding box, a simple route GeoJSON line, dominant weather, min/max/average temperature, and average barometric pressure.
+
 ### Create trip route with GeoJSON
 
 The `routeGeoJson` field is stored as JSON directly on the trip record:
@@ -202,6 +226,33 @@ Observation records accept multiple attached files. The backend does not require
 
 The frontend tracks file purpose locally and in record metadata (e.g., `photoCount`). The backend preserves filename, content type, and description metadata.
 
+For a mobile-friendly photo control, the frontend can use:
+
+```html
+<input type="file" accept="image/*" capture="environment" multiple>
+```
+
+Upload each selected photo to:
+
+```text
+POST /api/wildlife-field-recorder/observations/{OBSERVATION_RECORD_ID}/files
+```
+
+Observation responses include a `files` array. If at least one attached file is an image, the API also adds `data.photo_url` as a convenience preview URL without requiring that field to be persisted in the observation JSON.
+
+## Review Page Guidance
+
+The review screen should be dense enough to scan many observations. A useful row/card needs:
+
+- species/common subject, category, count, and review status
+- timestamp, short transcript or summary, and user note
+- latitude/longitude, accuracy, habitat, and behavior
+- `weatherCondition`, `temperatureF`, `barometricPressureHpa` or `barometricPressureInHg`, humidity, and wind if present
+- photo thumbnail from `data.photo_url` or the first image in `files`
+- audio/file counts and any submit/sync status
+
+Trips created through `POST /trips/from-observations` should be listed as editable summaries, not as a separate manual upload step.
+
 ## Field Quick Reference
 
 ### Observations
@@ -223,6 +274,14 @@ The frontend tracks file purpose locally and in record metadata (e.g., `photoCou
 | speed | number | |
 | gpsStatus | string | |
 | weatherStatus | string | |
+| weatherCondition | string | |
+| temperatureF | number | |
+| temperatureC | number | |
+| barometricPressureHpa | number | |
+| barometricPressureInHg | number | |
+| humidityPercent | number | |
+| windSpeedMph | number | |
+| windDirection | string | |
 | weatherFetchedAt | datetime | |
 | weatherRaw | json | |
 | transcript | text | |
@@ -260,6 +319,11 @@ The frontend tracks file purpose locally and in record metadata (e.g., `photoCou
 | boundingBox | json | |
 | totalDistanceEstimateMiles | number | |
 | weatherSummary | text | |
+| dominantWeatherCondition | string | |
+| minTemperatureF | number | |
+| maxTemperatureF | number | |
+| avgTemperatureF | number | |
+| avgBarometricPressureHpa | number | |
 | tripSummary | text | |
 | habitats | list | |
 | notableMoments | list | |

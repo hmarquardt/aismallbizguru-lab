@@ -202,6 +202,22 @@ apps:
             type: string
           weatherStatus:
             type: string
+          weatherCondition:
+            type: string
+          temperatureF:
+            type: number
+          temperatureC:
+            type: number
+          barometricPressureHpa:
+            type: number
+          barometricPressureInHg:
+            type: number
+          humidityPercent:
+            type: number
+          windSpeedMph:
+            type: number
+          windDirection:
+            type: string
           weatherFetchedAt:
             type: datetime
           weatherRaw:
@@ -287,6 +303,16 @@ apps:
             type: number
           weatherSummary:
             type: text
+          dominantWeatherCondition:
+            type: string
+          minTemperatureF:
+            type: number
+          maxTemperatureF:
+            type: number
+          avgTemperatureF:
+            type: number
+          avgBarometricPressureHpa:
+            type: number
           tripSummary:
             type: text
           habitats:

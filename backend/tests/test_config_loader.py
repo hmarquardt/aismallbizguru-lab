@@ -33,6 +33,9 @@ def test_loads_sample_config() -> None:
     assert obs.files.max_size_mb == 50
     assert obs.fields["localId"].required is True
     assert obs.fields["createdAt"].required is True
+    assert obs.fields["weatherCondition"].type == "string"
+    assert obs.fields["temperatureF"].type == "number"
+    assert obs.fields["barometricPressureHpa"].type == "number"
 
     trips = wfr.resources["trips"]
     assert trips.files.enabled is True
@@ -40,6 +43,9 @@ def test_loads_sample_config() -> None:
     assert trips.fields["localTripId"].required is True
     assert trips.fields["title"].required is True
     assert trips.fields["startedAt"].required is True
+    assert trips.fields["dominantWeatherCondition"].type == "string"
+    assert trips.fields["avgTemperatureF"].type == "number"
+    assert trips.fields["avgBarometricPressureHpa"].type == "number"
 
 
 def test_invalid_field_type_raises_clear_error(tmp_path: Path) -> None:

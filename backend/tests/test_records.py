@@ -425,6 +425,87 @@ def test_create_wildlife_trip(client, wfr_auth_token):
     assert json["data"]["routeGeoJson"]["type"] == "FeatureCollection"
 
 
+def test_create_wildlife_trip_from_observations(client, wfr_auth_token):
+    for payload in (
+        {
+            "localId": "cluster-obs-1",
+            "createdAt": "2026-05-10T20:15:00Z",
+            "latitude": 38.3553,
+            "longitude": -87.5675,
+            "weatherCondition": "cloudy",
+            "temperatureF": 71.0,
+            "barometricPressureHpa": 1012.1,
+            "subjectCommonName": "Great Blue Heron",
+            "category": "bird",
+            "habitat": "lake",
+        },
+        {
+            "localId": "cluster-obs-2",
+            "createdAt": "2026-05-10T20:42:00Z",
+            "latitude": 38.3561,
+            "longitude": -87.5682,
+            "weatherCondition": "cloudy",
+            "temperatureF": 73.0,
+            "barometricPressureHpa": 1011.9,
+            "subjectCommonName": "Bullfrog",
+            "category": "amphibian",
+            "habitat": "wetland",
+        },
+    ):
+        response = client.post(
+            "/api/wildlife-field-recorder/observations",
+            json={"data": payload},
+            headers={"Authorization": f"Bearer {wfr_auth_token}"},
+        )
+        assert response.status_code == 201
+
+    response = client.post(
+        "/api/wildlife-field-recorder/trips/from-observations",
+        json={
+            "title": "Cloudy Lake Walk",
+            "observation_local_ids": ["cluster-obs-1", "cluster-obs-2"],
+        },
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+
+    assert response.status_code == 201
+    data = response.json()["data"]
+    assert data["title"] == "Cloudy Lake Walk"
+    assert data["startedAt"] == "2026-05-10T20:15:00Z"
+    assert data["endedAt"] == "2026-05-10T20:42:00Z"
+    assert data["observationLocalIds"] == ["cluster-obs-1", "cluster-obs-2"]
+    assert data["observationCount"] == 2
+    assert data["categories"] == ["amphibian", "bird"]
+    assert data["dominantWeatherCondition"] == "cloudy"
+    assert data["minTemperatureF"] == 71.0
+    assert data["maxTemperatureF"] == 73.0
+    assert data["avgTemperatureF"] == 72.0
+    assert data["avgBarometricPressureHpa"] == 1012.0
+    assert data["centerLatitude"] == pytest.approx(38.3557)
+    assert data["centerLongitude"] == pytest.approx(-87.56785)
+    assert data["boundingBox"] == {
+        "minLatitude": 38.3553,
+        "maxLatitude": 38.3561,
+        "minLongitude": -87.5682,
+        "maxLongitude": -87.5675,
+    }
+    assert data["routeGeoJson"]["features"][0]["geometry"]["coordinates"] == [
+        [-87.5675, 38.3553],
+        [-87.5682, 38.3561],
+    ]
+    assert data["reviewStatus"] == "needs-review"
+
+
+def test_create_wildlife_trip_from_observations_requires_selection(client, wfr_auth_token):
+    response = client.post(
+        "/api/wildlife-field-recorder/trips/from-observations",
+        json={"title": "No Observations"},
+        headers={"Authorization": f"Bearer {wfr_auth_token}"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "At least one observation is required"
+
+
 def test_list_wildlife_trips(client, wfr_auth_token):
     client.post(
         "/api/wildlife-field-recorder/trips",
