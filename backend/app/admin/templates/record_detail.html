@@ -11,7 +11,7 @@
     <div class="actions">
         <a class="btn btn-secondary" href="/admin/apps/{{ record.app_id }}/{{ record.resource }}">Back</a>
         <a class="btn" href="/admin/records/{{ record.id }}/edit">Edit</a>
-        <form method="post" action="/admin/records/{{ record.id }}/delete">
+        <form method="post" action="/admin/records/{{ record.id }}/delete" data-ajax data-ajax-disable-submit="true">
             <button class="btn btn-danger" type="submit">Delete</button>
         </form>
     </div>
@@ -37,7 +37,7 @@
 <div class="card">
     <div class="page-header compact">
         <h2>Files</h2>
-        <form method="post" action="/admin/records/{{ record.id }}/files" enctype="multipart/form-data">
+        <form method="post" action="/admin/records/{{ record.id }}/files" enctype="multipart/form-data" data-ajax data-ajax-clear-file="true">
             <input type="file" name="file" required>
             <button class="btn" type="submit">Upload</button>
         </form>
@@ -51,7 +51,7 @@
             {% for f in files %}
             <tr>
                 <td>
-                    <form class="inline-form" method="post" action="/admin/files/{{ f.id }}/rename">
+                    <form class="inline-form" method="post" action="/admin/files/{{ f.id }}/rename" data-ajax>
                         <input type="text" name="filename" value="{{ f.filename }}" required>
                         <button class="btn btn-small" type="submit">Rename</button>
                     </form>
@@ -62,7 +62,7 @@
                 <td class="file-actions-cell">
                     <div class="icon-actions">
                         <a class="icon-btn" href="/admin/files/{{ f.id }}/download" title="Download" aria-label="Download">&darr;</a>
-                        <form method="post" action="/admin/files/{{ f.id }}/delete">
+                        <form method="post" action="/admin/files/{{ f.id }}/delete" data-ajax data-ajax-remove="row">
                             <input type="hidden" name="next_url" value="/admin/records/{{ record.id }}">
                             <button class="icon-btn icon-btn-danger" type="submit" title="Delete" aria-label="Delete">&times;</button>
                         </form>

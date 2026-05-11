@@ -4,7 +4,7 @@ from typing import Any
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Query, Request, Response, status
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from sqlalchemy import func, select
 from starlette.datastructures import UploadFile
 
@@ -110,6 +110,18 @@ def redirect(location: str, response: Response) -> Response:
     response.headers["Location"] = location
     response.status_code = status.HTTP_303_SEE_OTHER
     return response
+
+
+def wants_json(request: Request) -> bool:
+    return request.headers.get("x-requested-with") == "XMLHttpRequest"
+
+
+def ajax_response(message: str, location: str | None = None, **extra: Any) -> JSONResponse:
+    payload = {"ok": True, "message": message}
+    if location:
+        payload["location"] = location
+    payload.update(extra)
+    return JSONResponse(payload)
 
 
 def parse_record_data(resource_config, form: dict[str, Any]) -> dict[str, Any]:
@@ -284,9 +296,13 @@ async def create_record_page(app_id: str, resource: str, request: Request, respo
     try:
         record = create_record(app_id, resource, parse_record_data(resource_config, form))
     except RecordError as exc:
+        if wants_json(request):
+            return JSONResponse({"ok": False, "message": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
         return render("record_form.html", mode="create", app_id=app_id, app=app_config,
                       resource=resource, resource_config=resource_config,
                       values=form, error=str(exc), record=None)
+    if wants_json(request):
+        return ajax_response("Record created", f"/admin/records/{record.id}", id=record.id)
     return redirect(f"/admin/records/{record.id}", response)
 
 
@@ -365,20 +381,26 @@ async def update_record_page(record_id: str, request: Request, response: Respons
     try:
         update_record(record_id, parse_record_data(resource_config, form))
     except RecordError as exc:
+        if wants_json(request):
+            return JSONResponse({"ok": False, "message": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
         return render("record_form.html", mode="edit", app_id=record.app_id, app=app_config,
                       resource=record.resource, resource_config=resource_config,
                       values=form, error=str(exc), record=record)
+    if wants_json(request):
+        return ajax_response("Record saved", f"/admin/records/{record_id}", id=record_id)
     return redirect(f"/admin/records/{record_id}", response)
 
 
 @router.post("/records/{record_id}/delete")
-def delete_record_page(record_id: str, response: Response, _: Annotated[str, Depends(require_admin)]):
+def delete_record_page(record_id: str, request: Request, response: Response, _: Annotated[str, Depends(require_admin)]):
     record = get_record_or_404(record_id)
     location = f"/admin/apps/{record.app_id}/{record.resource}"
     try:
         soft_delete_record(record_id)
     except RecordError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    if wants_json(request):
+        return ajax_response("Record deleted", location)
     return redirect(location, response)
 
 
@@ -389,12 +411,18 @@ async def upload_record_file(record_id: str, request: Request, response: Respons
     form = await request.form()
     uploaded = form.get("file")
     if not isinstance(uploaded, UploadFile):
+        if wants_json(request):
+            return JSONResponse({"ok": False, "message": "File is required"}, status_code=status.HTTP_400_BAD_REQUEST)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File is required")
     try:
-        create_file(record.app_id, record.resource, record.id, uploaded.filename or "unnamed",
-                    uploaded.content_type or "application/octet-stream", await uploaded.read())
+        file_model = create_file(record.app_id, record.resource, record.id, uploaded.filename or "unnamed",
+                                 uploaded.content_type or "application/octet-stream", await uploaded.read())
     except FileServiceError as exc:
+        if wants_json(request):
+            return JSONResponse({"ok": False, "message": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    if wants_json(request):
+        return ajax_response("File uploaded", f"/admin/records/{record_id}", id=file_model.id)
     return redirect(f"/admin/records/{record_id}", response)
 
 
@@ -440,18 +468,24 @@ def download_file_admin(file_id: str, _: Annotated[str, Depends(require_admin)])
 
 
 @router.post("/files/{file_id}/rename")
-def rename_file_page(file_id: str, response: Response, _: Annotated[str, Depends(require_admin)],
+def rename_file_page(file_id: str, request: Request, response: Response, _: Annotated[str, Depends(require_admin)],
                      filename: Annotated[str, Form()]):
     try:
         model = rename_file_record(file_id, filename)
     except FileServiceError as exc:
+        if wants_json(request):
+            return JSONResponse({"ok": False, "message": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    return redirect(f"/admin/records/{model.record_id}" if model.record_id else "/admin/files", response)
+    location = f"/admin/records/{model.record_id}" if model.record_id else "/admin/files"
+    if wants_json(request):
+        return ajax_response("File renamed", location, filename=model.filename)
+    return redirect(location, response)
 
 
 @router.post("/files/{file_id}/delete")
 def delete_file_page(
     file_id: str,
+    request: Request,
     response: Response,
     _: Annotated[str, Depends(require_admin)],
     next_url: Annotated[str, Form()] = "/admin/files",
@@ -463,7 +497,11 @@ def delete_file_page(
     try:
         delete_file_record(file_id)
     except FileServiceError as exc:
+        if wants_json(request):
+            return JSONResponse({"ok": False, "message": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    if wants_json(request):
+        return ajax_response("File deleted", location)
     return redirect(location, response)
 
 
@@ -484,11 +522,13 @@ def list_tokens_page(_: Annotated[str, Depends(require_admin)], new_token: str |
 
 
 @router.post("/tokens")
-def create_token_page(response: Response, _: Annotated[str, Depends(require_admin)],
+def create_token_page(request: Request, response: Response, _: Annotated[str, Depends(require_admin)],
                       name: Annotated[str, Form()], scopes: Annotated[str, Form()] = ""):
     try:
         scopes_json = parse_token_scopes(scopes)
     except ValueError as exc:
+        if wants_json(request):
+            return JSONResponse({"ok": False, "message": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
         session = get_session_factory()()
         try:
             tokens = session.scalars(select(ApiTokenModel).order_by(ApiTokenModel.created_at.desc())).all()
@@ -512,13 +552,15 @@ def create_token_page(response: Response, _: Annotated[str, Depends(require_admi
     finally:
         session.close()
 
+    if wants_json(request):
+        return ajax_response("Token created. Save it now; it will not be shown again.", "/admin/tokens", token=raw)
     response.headers["Location"] = f"/admin/tokens?new_token={raw}"
     response.status_code = status.HTTP_303_SEE_OTHER
     return response
 
 
 @router.post("/tokens/{token_id}/revoke")
-def revoke_token_page(response: Response, token_id: str, _: Annotated[str, Depends(require_admin)]):
+def revoke_token_page(request: Request, response: Response, token_id: str, _: Annotated[str, Depends(require_admin)]):
     session = get_session_factory()()
     try:
         token = session.scalar(select(ApiTokenModel).where(ApiTokenModel.id == token_id))
@@ -527,13 +569,15 @@ def revoke_token_page(response: Response, token_id: str, _: Annotated[str, Depen
             session.commit()
     finally:
         session.close()
+    if wants_json(request):
+        return ajax_response("Token revoked", "/admin/tokens")
     response.headers["Location"] = "/admin/tokens"
     response.status_code = status.HTTP_303_SEE_OTHER
     return response
 
 
 @router.post("/tokens/{token_id}/delete")
-def delete_token_page(response: Response, token_id: str, _: Annotated[str, Depends(require_admin)]):
+def delete_token_page(request: Request, response: Response, token_id: str, _: Annotated[str, Depends(require_admin)]):
     session = get_session_factory()()
     try:
         token = session.scalar(select(ApiTokenModel).where(ApiTokenModel.id == token_id))
@@ -542,6 +586,8 @@ def delete_token_page(response: Response, token_id: str, _: Annotated[str, Depen
             session.commit()
     finally:
         session.close()
+    if wants_json(request):
+        return ajax_response("Token deleted", "/admin/tokens")
     response.headers["Location"] = "/admin/tokens"
     response.status_code = status.HTTP_303_SEE_OTHER
     return response

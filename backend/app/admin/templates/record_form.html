@@ -16,7 +16,12 @@
 {% endif %}
 
 <div class="card">
-    <form method="post" action="{{ '/admin/records/' ~ record.id if record else '/admin/apps/' ~ app_id ~ '/' ~ resource ~ '/new' }}">
+    <form
+        method="post"
+        action="{{ '/admin/records/' ~ record.id if record else '/admin/apps/' ~ app_id ~ '/' ~ resource ~ '/new' }}"
+        data-ajax
+        data-ajax-location-target="#record-result-link"
+    >
         {% for field_name, field in resource_config.fields.items() %}
         <div class="form-group">
             <label for="{{ field_name }}">{{ field.label or field_name }}{% if field.required %} *{% endif %}</label>
@@ -39,7 +44,10 @@
             {% endif %}
         </div>
         {% endfor %}
-        <button class="btn" type="submit">{{ 'Save Changes' if mode == 'edit' else 'Create Record' }}</button>
+        <div class="actions">
+            <button class="btn" type="submit">{{ 'Save Changes' if mode == 'edit' else 'Create Record' }}</button>
+            <a id="record-result-link" class="btn btn-secondary" href="{{ '/admin/records/' ~ record.id if record else '#' }}" {% if not record %}hidden{% endif %}>View Record</a>
+        </div>
     </form>
 </div>
 {% endblock %}

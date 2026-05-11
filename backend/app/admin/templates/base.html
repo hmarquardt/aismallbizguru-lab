@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}LabBox Admin{% endblock %}</title>
-    <link rel="stylesheet" href="/static/admin.css?v=20260511-json-modal">
+    <link rel="stylesheet" href="/static/admin.css?v=20260511-ajax-crud">
 </head>
 <body>
     <nav>
@@ -19,6 +19,7 @@
         </form>
     </nav>
     <main>
+        <div id="admin-status" class="admin-status" role="status" aria-live="polite"></div>
         {% block content %}{% endblock %}
     </main>
     <div class="json-modal" id="json-modal" aria-hidden="true">
@@ -35,7 +36,7 @@
     (function () {
         const modal = document.getElementById("json-modal");
         const code = document.getElementById("json-modal-code");
-        if (!modal || !code) return;
+        const statusBox = document.getElementById("admin-status");
 
         function escapeHtml(value) {
             return value
@@ -63,6 +64,7 @@
         }
 
         function openJson(button) {
+            if (!modal || !code) return;
             const label = button.getAttribute("data-json-title") || "JSON";
             const raw = button.getAttribute("data-json") || "{}";
             let pretty = raw;
@@ -78,6 +80,7 @@
         }
 
         function closeJson() {
+            if (!modal || !code) return;
             modal.classList.remove("is-open");
             modal.setAttribute("aria-hidden", "true");
             code.textContent = "";
@@ -96,6 +99,91 @@
         document.addEventListener("keydown", function (event) {
             if (event.key === "Escape") {
                 closeJson();
+            }
+        });
+
+        function showStatus(message, type) {
+            if (!statusBox) return;
+            statusBox.textContent = message;
+            statusBox.className = "admin-status is-visible " + (type || "status-info-bg");
+        }
+
+        function clearStatus() {
+            if (!statusBox) return;
+            statusBox.textContent = "";
+            statusBox.className = "admin-status";
+        }
+
+        async function submitAjaxForm(form, submitter) {
+            const response = await fetch(form.action, {
+                method: form.method || "POST",
+                body: new FormData(form),
+                headers: {"X-Requested-With": "XMLHttpRequest"},
+            });
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch (_error) {
+                payload = {message: response.ok ? "Saved" : "Request failed"};
+            }
+            if (!response.ok || payload.ok === false) {
+                throw new Error(payload.message || "Request failed");
+            }
+
+            showStatus(payload.message || "Saved", "status-ok-bg");
+
+            if (payload.token) {
+                const tokenBox = document.getElementById("new-token-inline");
+                const tokenValue = document.getElementById("new-token-value");
+                if (tokenBox && tokenValue) {
+                    tokenValue.textContent = payload.token;
+                    tokenBox.hidden = false;
+                }
+                form.reset();
+            }
+
+            if (form.dataset.ajaxRemove === "row") {
+                form.closest("tr")?.remove();
+            }
+
+            if (form.dataset.ajaxDisableSubmit === "true" && submitter) {
+                submitter.disabled = true;
+            }
+
+            if (form.dataset.ajaxClearFile === "true") {
+                const input = form.querySelector('input[type="file"]');
+                if (input) input.value = "";
+            }
+
+            if (form.dataset.ajaxLocationTarget && payload.location) {
+                const target = document.querySelector(form.dataset.ajaxLocationTarget);
+                if (target) {
+                    target.href = payload.location;
+                    target.hidden = false;
+                }
+            }
+        }
+
+        document.addEventListener("submit", async function (event) {
+            const form = event.target.closest("form[data-ajax]");
+            if (!form) return;
+            event.preventDefault();
+            clearStatus();
+            const submitter = event.submitter;
+            const originalText = submitter ? submitter.textContent : "";
+            if (submitter) {
+                submitter.disabled = true;
+                submitter.textContent = "Working...";
+            }
+            try {
+                await submitAjaxForm(form, submitter);
+            } catch (error) {
+                showStatus(error.message || "Request failed", "status-error-bg");
+            } finally {
+                if (submitter && form.dataset.ajaxDisableSubmit !== "true") {
+                    submitter.disabled = false;
+                    submitter.textContent = originalText;
+                }
             }
         });
     })();

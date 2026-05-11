@@ -53,7 +53,7 @@
                 <td class="file-actions-cell">
                     <div class="icon-actions">
                         <a class="icon-btn" href="/admin/files/{{ f.id }}/download" title="Download" aria-label="Download">&darr;</a>
-                        <form method="post" action="/admin/files/{{ f.id }}/delete">
+                        <form method="post" action="/admin/files/{{ f.id }}/delete" data-ajax data-ajax-remove="row">
                             <input type="hidden" name="next_url" value="/admin/files{% if selected_app_id or selected_resource %}?app_id={{ selected_app_id }}&resource={{ selected_resource }}{% endif %}">
                             <button class="icon-btn icon-btn-danger" type="submit" title="Delete" aria-label="Delete">&times;</button>
                         </form>

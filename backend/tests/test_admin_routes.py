@@ -128,6 +128,49 @@ def test_admin_can_create_and_edit_record(tmp_path, monkeypatch) -> None:
         session.close()
 
 
+def test_admin_record_ajax_create_returns_json_status(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        client.cookies.set("session", "test-session")
+        response = client.post(
+            "/admin/apps/junk-drawer/notes/new",
+            data={"title": "Ajax Note", "body": "Created in admin", "tags": '["admin"]'},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["message"] == "Record created"
+    assert payload["location"].startswith("/admin/records/")
+
+
+def test_admin_record_ajax_validation_returns_json_error(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        client.cookies.set("session", "test-session")
+        response = client.post(
+            "/admin/apps/junk-drawer/notes/new",
+            data={"body": "Missing title"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["ok"] is False
+    assert "Title is required" in payload["message"]
+
+
 def test_admin_can_soft_delete_record(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
     monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
@@ -142,6 +185,33 @@ def test_admin_can_soft_delete_record(tmp_path, monkeypatch) -> None:
 
     assert response.status_code == 303
     assert response.headers["Location"] == "/admin/apps/junk-drawer/notes"
+
+    session = get_session_factory()()
+    try:
+        deleted = session.scalar(select(RecordModel).where(RecordModel.id == record.id))
+        assert deleted is not None
+        assert deleted.deleted_at is not None
+    finally:
+        session.close()
+
+
+def test_admin_ajax_delete_record_returns_status(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        record = create_record("junk-drawer", "notes", {"title": "Ajax Delete Me"})
+        client.cookies.set("session", "test-session")
+        response = client.post(
+            f"/admin/records/{record.id}/delete",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Record deleted"
 
     session = get_session_factory()()
     try:
@@ -223,6 +293,48 @@ def test_admin_can_delete_file(tmp_path, monkeypatch) -> None:
         assert deleted.deleted_at is not None
     finally:
         session.close()
+
+
+def test_admin_ajax_delete_file_returns_status(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    monkeypatch.setattr("app.files.service.delete_file", lambda _object_key: None)
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        record = create_record("junk-drawer", "notes", {"title": "File Owner"})
+        session = get_session_factory()()
+        try:
+            session.add(
+                FileModel(
+                    id="admin-file-ajax-delete",
+                    app_id="junk-drawer",
+                    resource="notes",
+                    record_id=record.id,
+                    bucket="labbox-assets",
+                    object_key=f"junk-drawer/{record.id}/admin-file-ajax-delete.webp",
+                    filename="admin-file-ajax-delete.webp",
+                    content_type="image/webp",
+                    size_bytes=12,
+                    checksum="abc123",
+                    created_at=utc_now(),
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        client.cookies.set("session", "test-session")
+        response = client.post(
+            "/admin/files/admin-file-ajax-delete/delete",
+            data={"next_url": "/admin/files"},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "File deleted"
 
 
 def test_admin_files_page_filters_by_app(tmp_path, monkeypatch) -> None:
@@ -388,3 +500,58 @@ def test_admin_can_permanently_delete_token(tmp_path, monkeypatch) -> None:
         assert token is None
     finally:
         session.close()
+
+
+def test_admin_ajax_token_create_returns_token_once(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        client.cookies.set("session", "test-session")
+        response = client.post(
+            "/admin/tokens",
+            data={"name": "Ajax Token", "scopes": '{"junk-drawer": ["read"]}'},
+            headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["message"].startswith("Token created")
+    assert payload["token"]
+
+
+def test_admin_ajax_token_delete_returns_status(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        session = get_session_factory()()
+        try:
+            session.add(
+                ApiTokenModel(
+                    id="token-ajax-delete-me",
+                    name="Delete Me Ajax",
+                    token_hash="hashed-token",
+                    scopes_json='{"junk-drawer": ["read"]}',
+                    created_at=utc_now(),
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        client.cookies.set("session", "test-session")
+        response = client.post(
+            "/admin/tokens/token-ajax-delete-me/delete",
+            headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Token deleted"

@@ -13,13 +13,19 @@
     <button class="btn" onclick="navigator.clipboard.writeText('{{ new_token }}')">Copy to Clipboard</button>
 </div>
 {% endif %}
+<div id="new-token-inline" class="card token-created-card" hidden>
+    <h2>Token Created - Save Now</h2>
+    <p>This token will never be shown again after this page.</p>
+    <p><code id="new-token-value" class="token-value"></code></p>
+    <button class="btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('new-token-value').textContent)">Copy to Clipboard</button>
+</div>
 
 <div class="card">
     <h2>Create Token</h2>
     {% if scope_error %}
     <div class="alert alert-error">{{ scope_error }}</div>
     {% endif %}
-    <form method="post" action="/admin/tokens">
+    <form method="post" action="/admin/tokens" data-ajax>
         <div class="form-group">
             <label for="name">Name</label>
             <input type="text" id="name" name="name" value="{{ form_name or '' }}" required>
@@ -65,11 +71,11 @@
                 <td>
                     <div class="icon-actions">
                     {% if not t.revoked_at %}
-                    <form method="post" action="/admin/tokens/{{ t.id }}/revoke">
+                    <form method="post" action="/admin/tokens/{{ t.id }}/revoke" data-ajax data-ajax-disable-submit="true">
                         <button type="submit" class="btn btn-danger">Revoke</button>
                     </form>
                     {% endif %}
-                    <form method="post" action="/admin/tokens/{{ t.id }}/delete" onsubmit="return confirm('Permanently delete this token?');">
+                    <form method="post" action="/admin/tokens/{{ t.id }}/delete" data-ajax data-ajax-remove="row">
                         <button type="submit" class="btn btn-danger">Delete</button>
                     </form>
                     </div>

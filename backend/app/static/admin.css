@@ -165,6 +165,37 @@ tr:hover {
     border: 1px solid #cfc;
 }
 
+.admin-status {
+    display: none;
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    font-weight: 600;
+}
+
+.admin-status.is-visible {
+    display: block;
+}
+
+.status-ok-bg {
+    background: #edf8f0;
+    border-color: #badbcc;
+    color: #146c2e;
+}
+
+.status-error-bg {
+    background: #fdecec;
+    border-color: #f5c2c7;
+    color: #842029;
+}
+
+.status-info-bg {
+    background: #eef6fb;
+    border-color: #b6effb;
+    color: #055160;
+}
+
 .status-ok { color: #27ae60; }
 .status-error { color: #e74c3c; }
 .status-warning { color: #f39c12; }
@@ -360,6 +391,24 @@ tr:hover {
 .json-number { color: #fcd34d; }
 .json-boolean { color: #f9a8d4; }
 .json-null { color: #c4b5fd; }
+
+.token-created-card {
+    background: #fef3cd;
+    border: 2px solid #ffc107;
+}
+
+.token-created-card h2 {
+    color: #856404;
+}
+
+.token-value {
+    display: block;
+    padding: 0.5rem;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 1.1em;
+    word-break: break-all;
+}
 
 .file-actions-cell {
     min-width: 4.75rem;
