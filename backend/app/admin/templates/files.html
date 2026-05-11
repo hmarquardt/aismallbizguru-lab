@@ -3,7 +3,30 @@
 {% block title %}Files - LabBox Admin{% endblock %}
 
 {% block content %}
-<h1>Files</h1>
+<div class="page-header compact">
+    <div>
+        <h1>Files</h1>
+        <p class="muted">Showing up to 100 active files.</p>
+    </div>
+</div>
+
+<form class="filter-bar" method="get" action="/admin/files">
+    <label>
+        App
+        <select name="app_id">
+            <option value="">All apps</option>
+            {% for app in apps %}
+            <option value="{{ app.app_id }}" {% if selected_app_id == app.app_id %}selected{% endif %}>{{ app.title }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>
+        Resource
+        <input type="text" name="resource" value="{{ selected_resource }}" placeholder="All resources">
+    </label>
+    <button class="btn" type="submit">Filter</button>
+    <a class="btn btn-secondary" href="/admin/files">Clear</a>
+</form>
 
 <div class="card">
     {% if files %}
@@ -31,7 +54,7 @@
                     <div class="icon-actions">
                         <a class="icon-btn" href="/admin/files/{{ f.id }}/download" title="Download" aria-label="Download">&darr;</a>
                         <form method="post" action="/admin/files/{{ f.id }}/delete">
-                            <input type="hidden" name="next_url" value="/admin/files">
+                            <input type="hidden" name="next_url" value="/admin/files{% if selected_app_id or selected_resource %}?app_id={{ selected_app_id }}&resource={{ selected_resource }}{% endif %}">
                             <button class="icon-btn icon-btn-danger" type="submit" title="Delete" aria-label="Delete">&times;</button>
                         </form>
                     </div>

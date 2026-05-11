@@ -152,6 +152,29 @@ def test_admin_can_soft_delete_record(tmp_path, monkeypatch) -> None:
         session.close()
 
 
+def test_admin_records_page_filters_by_app_and_uses_json_pills(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        create_record("junk-drawer", "notes", {"title": "Admin Note"})
+        create_record("wildlife-field-recorder", "observations", {
+            "localId": "obs-admin-filter",
+            "createdAt": "2026-05-11T10:00:00Z",
+        })
+        client.cookies.set("session", "test-session")
+        response = client.get("/admin/records?app_id=wildlife-field-recorder")
+
+    assert response.status_code == 200
+    assert "data-json=" in response.text
+    assert "obs-admin-filter" in response.text
+    assert "Admin Note" not in response.text
+    assert 'value="wildlife-field-recorder" selected' in response.text
+
+
 def test_admin_can_delete_file(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
     monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
@@ -200,6 +223,57 @@ def test_admin_can_delete_file(tmp_path, monkeypatch) -> None:
         assert deleted.deleted_at is not None
     finally:
         session.close()
+
+
+def test_admin_files_page_filters_by_app(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        session = get_session_factory()()
+        try:
+            session.add_all([
+                FileModel(
+                    id="admin-file-junk",
+                    app_id="junk-drawer",
+                    resource="notes",
+                    record_id="record-junk",
+                    bucket="labbox-assets",
+                    object_key="junk-drawer/record-junk/admin-file-junk.txt",
+                    filename="admin-file-junk.txt",
+                    content_type="text/plain",
+                    size_bytes=12,
+                    checksum="abc123",
+                    created_at=utc_now(),
+                ),
+                FileModel(
+                    id="admin-file-wfr",
+                    app_id="wildlife-field-recorder",
+                    resource="observations",
+                    record_id="record-wfr",
+                    bucket="labbox-assets",
+                    object_key="wildlife-field-recorder/record-wfr/admin-file-wfr.jpg",
+                    filename="admin-file-wfr.jpg",
+                    content_type="image/jpeg",
+                    size_bytes=24,
+                    checksum="def456",
+                    created_at=utc_now(),
+                ),
+            ])
+            session.commit()
+        finally:
+            session.close()
+
+        client.cookies.set("session", "test-session")
+        response = client.get("/admin/files?app_id=wildlife-field-recorder")
+
+    assert response.status_code == 200
+    assert "admin-file-wfr.jpg" in response.text
+    assert "admin-file-junk.txt" not in response.text
+    assert 'value="wildlife-field-recorder" selected' in response.text
 
 
 def test_admin_token_create_saves_json_scopes(tmp_path, monkeypatch) -> None:
@@ -274,6 +348,43 @@ def test_admin_token_create_rejects_invalid_scopes(tmp_path, monkeypatch) -> Non
     session = get_session_factory()()
     try:
         token = session.scalar(select(ApiTokenModel).where(ApiTokenModel.name == "Bad Token"))
+        assert token is None
+    finally:
+        session.close()
+
+
+def test_admin_can_permanently_delete_token(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "labbox.db"))
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "test-session")
+    get_settings.cache_clear()
+    clear_engine_cache()
+
+    with TestClient(app) as client:
+        init_db()
+        session = get_session_factory()()
+        try:
+            session.add(
+                ApiTokenModel(
+                    id="token-delete-me",
+                    name="Delete Me",
+                    token_hash="hashed-token",
+                    scopes_json='{"junk-drawer": ["read"]}',
+                    created_at=utc_now(),
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        client.cookies.set("session", "test-session")
+        response = client.post("/admin/tokens/token-delete-me/delete", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["Location"] == "/admin/tokens"
+
+    session = get_session_factory()()
+    try:
+        token = session.scalar(select(ApiTokenModel).where(ApiTokenModel.id == "token-delete-me"))
         assert token is None
     finally:
         session.close()

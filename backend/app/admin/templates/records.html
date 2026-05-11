@@ -3,7 +3,30 @@
 {% block title %}Records - LabBox Admin{% endblock %}
 
 {% block content %}
-<h1>Recent Records</h1>
+<div class="page-header compact">
+    <div>
+        <h1>Recent Records</h1>
+        <p class="muted">Showing up to 100 active records.</p>
+    </div>
+</div>
+
+<form class="filter-bar" method="get" action="/admin/records">
+    <label>
+        App
+        <select name="app_id">
+            <option value="">All apps</option>
+            {% for app in apps %}
+            <option value="{{ app.app_id }}" {% if selected_app_id == app.app_id %}selected{% endif %}>{{ app.title }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>
+        Resource
+        <input type="text" name="resource" value="{{ selected_resource }}" placeholder="All resources">
+    </label>
+    <button class="btn" type="submit">Filter</button>
+    <a class="btn btn-secondary" href="/admin/records">Clear</a>
+</form>
 
 <div class="card">
     {% if records %}
@@ -16,7 +39,14 @@
             <tr>
                 <td><code>{{ r.app_id }}</code></td>
                 <td>{{ r.resource }}</td>
-                <td><pre style="max-width: 300px; overflow: hidden;">{{ r.data|pprint }}</pre></td>
+                <td>
+                    <button
+                        class="json-pill"
+                        type="button"
+                        data-json="{{ r.data_json|e }}"
+                        data-json-title="{{ r.app_id }}/{{ r.resource }} {{ r.id }}"
+                    >JSON</button>
+                </td>
                 <td>{{ r.created_at[:19] }}</td>
                 <td><a href="/admin/records/{{ r.id }}"><code style="font-size: 0.75em;">{{ r.id }}</code></a></td>
             </tr>

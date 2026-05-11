@@ -244,6 +244,123 @@ tr:hover {
     border-radius: 4px;
 }
 
+.filter-bar {
+    display: flex;
+    align-items: end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #fff;
+    border: 1px solid #e1e7eb;
+    border-radius: 8px;
+}
+
+.filter-bar label {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 12rem;
+    color: #455a64;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.filter-bar input,
+.filter-bar select {
+    min-height: 2.25rem;
+    box-sizing: border-box;
+    border: 1px solid #cfd8dc;
+    border-radius: 4px;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.95rem;
+}
+
+.json-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 4.5rem;
+    height: 1.8rem;
+    border: 1px solid #b0bec5;
+    border-radius: 999px;
+    background: #eef3f6;
+    color: #263238;
+    cursor: pointer;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.json-pill:hover {
+    background: #dfe8ed;
+}
+
+.json-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+}
+
+.json-modal.is-open {
+    display: block;
+}
+
+.json-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.56);
+}
+
+.json-modal__panel {
+    position: absolute;
+    top: 5vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(980px, calc(100vw - 2rem));
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.35);
+    overflow: hidden;
+}
+
+.json-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid #e1e7eb;
+}
+
+.json-modal__header h2 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.json-modal__body {
+    margin: 0;
+    padding: 1rem;
+    overflow: auto;
+    background: #0f172a;
+    color: #dbeafe;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    white-space: pre;
+    word-break: normal;
+}
+
+.json-key { color: #93c5fd; }
+.json-string { color: #86efac; }
+.json-number { color: #fcd34d; }
+.json-boolean { color: #f9a8d4; }
+.json-null { color: #c4b5fd; }
+
 .file-actions-cell {
     min-width: 4.75rem;
     white-space: nowrap;
@@ -304,6 +421,7 @@ pre {
     nav,
     .page-header,
     .actions,
+    .filter-bar,
     .inline-form {
         align-items: stretch;
         flex-direction: column;

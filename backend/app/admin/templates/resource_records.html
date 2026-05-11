@@ -16,9 +16,7 @@
     <table>
         <thead>
             <tr>
-                {% for field_name, field in resource_config.fields.items() %}
-                <th>{{ field.label or field_name }}</th>
-                {% endfor %}
+                <th>Data</th>
                 <th>Updated</th>
                 <th>ID</th>
             </tr>
@@ -26,9 +24,14 @@
         <tbody>
             {% for record in records %}
             <tr>
-                {% for field_name, field in resource_config.fields.items() %}
-                <td>{{ record.data.get(field_name, '-') }}</td>
-                {% endfor %}
+                <td>
+                    <button
+                        class="json-pill"
+                        type="button"
+                        data-json="{{ record.data_json|e }}"
+                        data-json-title="{{ app_id }}/{{ resource }} {{ record.id }}"
+                    >JSON</button>
+                </td>
                 <td>{{ record.updated_at[:19] }}</td>
                 <td><a href="/admin/records/{{ record.id }}"><code style="font-size: 0.75em;">{{ record.id }}</code></a></td>
             </tr>

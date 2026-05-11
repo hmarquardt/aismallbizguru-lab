@@ -46,7 +46,7 @@
     {% if tokens %}
     <table>
         <thead>
-            <tr><th>Name</th><th>Token</th><th>Scopes</th><th>Created</th><th>Status</th><th>Action</th></tr>
+            <tr><th>Name</th><th>Token</th><th>Scopes</th><th>Created</th><th>Status</th><th>Actions</th></tr>
         </thead>
         <tbody>
             {% for t in tokens %}
@@ -63,11 +63,16 @@
                     {% endif %}
                 </td>
                 <td>
+                    <div class="icon-actions">
                     {% if not t.revoked_at %}
-                    <form method="post" action="/admin/tokens/{{ t.id }}/revoke" style="display: inline;">
+                    <form method="post" action="/admin/tokens/{{ t.id }}/revoke">
                         <button type="submit" class="btn btn-danger">Revoke</button>
                     </form>
                     {% endif %}
+                    <form method="post" action="/admin/tokens/{{ t.id }}/delete" onsubmit="return confirm('Permanently delete this token?');">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                    </div>
                 </td>
             </tr>
             {% endfor %}

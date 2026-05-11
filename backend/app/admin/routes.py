@@ -3,7 +3,7 @@ import uuid
 from typing import Any
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Query, Request, Response, status
 from fastapi.responses import HTMLResponse, StreamingResponse
 from sqlalchemy import func, select
 from starlette.datastructures import UploadFile
@@ -175,6 +175,17 @@ def format_field_value(field_type: FieldType, value: Any) -> str:
     return str(value)
 
 
+def json_display_value(value: Any) -> str:
+    return json.dumps(value, indent=2, sort_keys=True)
+
+
+def app_filter_options() -> list[dict[str, str]]:
+    return [
+        {"app_id": app_id, "title": app_config.title}
+        for app_id, app_config in get_registry().list_apps().items()
+    ]
+
+
 def get_record_or_404(record_id: str) -> RecordModel:
     record = get_record(record_id)
     if record is None or record.deleted_at is not None:
@@ -240,6 +251,9 @@ def resource_records(app_id: str, resource: str, _: Annotated[str, Depends(requi
                   records=[{
                       "id": r.id,
                       "data": json.loads(r.data_json) if isinstance(r.data_json, str) else r.data_json,
+                      "data_json": json_display_value(
+                          json.loads(r.data_json) if isinstance(r.data_json, str) else r.data_json
+                      ),
                       "created_at": r.created_at,
                       "updated_at": r.updated_at,
                   } for r in records])
@@ -277,12 +291,20 @@ async def create_record_page(app_id: str, resource: str, request: Request, respo
 
 
 @router.get("/records", response_class=HTMLResponse)
-def list_records(_: Annotated[str, Depends(require_admin)]):
+def list_records(
+    _: Annotated[str, Depends(require_admin)],
+    app_id: Annotated[str | None, Query()] = None,
+    resource: Annotated[str | None, Query()] = None,
+):
     session = get_session_factory()()
     try:
+        query = select(RecordModel).where(RecordModel.deleted_at.is_(None))
+        if app_id:
+            query = query.where(RecordModel.app_id == app_id)
+        if resource:
+            query = query.where(RecordModel.resource == resource)
         records = session.scalars(
-            select(RecordModel).where(RecordModel.deleted_at.is_(None))
-            .order_by(RecordModel.created_at.desc()).limit(100)
+            query.order_by(RecordModel.created_at.desc()).limit(100)
         ).all()
     finally:
         session.close()
@@ -291,8 +313,14 @@ def list_records(_: Annotated[str, Depends(require_admin)]):
     for r in records:
         rec_data = json.loads(r.data_json) if isinstance(r.data_json, str) else r.data_json
         data.append({"id": r.id, "app_id": r.app_id, "resource": r.resource,
-                     "data": rec_data, "created_at": r.created_at})
-    return render("records.html", records=data)
+                     "data": rec_data, "data_json": json_display_value(rec_data), "created_at": r.created_at})
+    return render(
+        "records.html",
+        records=data,
+        apps=app_filter_options(),
+        selected_app_id=app_id or "",
+        selected_resource=resource or "",
+    )
 
 
 @router.get("/records/{record_id}", response_class=HTMLResponse)
@@ -371,12 +399,20 @@ async def upload_record_file(record_id: str, request: Request, response: Respons
 
 
 @router.get("/files", response_class=HTMLResponse)
-def list_files_admin(_: Annotated[str, Depends(require_admin)]):
+def list_files_admin(
+    _: Annotated[str, Depends(require_admin)],
+    app_id: Annotated[str | None, Query()] = None,
+    resource: Annotated[str | None, Query()] = None,
+):
     session = get_session_factory()()
     try:
+        query = select(FileModel).where(FileModel.deleted_at.is_(None))
+        if app_id:
+            query = query.where(FileModel.app_id == app_id)
+        if resource:
+            query = query.where(FileModel.resource == resource)
         files = session.scalars(
-            select(FileModel).where(FileModel.deleted_at.is_(None))
-            .order_by(FileModel.created_at.desc()).limit(100)
+            query.order_by(FileModel.created_at.desc()).limit(100)
         ).all()
     finally:
         session.close()
@@ -384,7 +420,7 @@ def list_files_admin(_: Annotated[str, Depends(require_admin)]):
         "id": f.id, "app_id": f.app_id, "resource": f.resource,
         "record_id": f.record_id, "filename": f.filename,
         "content_type": f.content_type, "size_bytes": f.size_bytes, "created_at": f.created_at
-    } for f in files])
+    } for f in files], apps=app_filter_options(), selected_app_id=app_id or "", selected_resource=resource or "")
 
 
 @router.get("/files/{file_id}/download")
@@ -488,6 +524,21 @@ def revoke_token_page(response: Response, token_id: str, _: Annotated[str, Depen
         token = session.scalar(select(ApiTokenModel).where(ApiTokenModel.id == token_id))
         if token:
             token.revoked_at = utc_now()
+            session.commit()
+    finally:
+        session.close()
+    response.headers["Location"] = "/admin/tokens"
+    response.status_code = status.HTTP_303_SEE_OTHER
+    return response
+
+
+@router.post("/tokens/{token_id}/delete")
+def delete_token_page(response: Response, token_id: str, _: Annotated[str, Depends(require_admin)]):
+    session = get_session_factory()()
+    try:
+        token = session.scalar(select(ApiTokenModel).where(ApiTokenModel.id == token_id))
+        if token:
+            session.delete(token)
             session.commit()
     finally:
         session.close()

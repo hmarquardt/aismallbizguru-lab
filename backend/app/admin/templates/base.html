@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}LabBox Admin{% endblock %}</title>
-    <link rel="stylesheet" href="/static/admin.css?v=20260508-file-actions">
+    <link rel="stylesheet" href="/static/admin.css?v=20260511-json-modal">
 </head>
 <body>
     <nav>
@@ -21,5 +21,84 @@
     <main>
         {% block content %}{% endblock %}
     </main>
+    <div class="json-modal" id="json-modal" aria-hidden="true">
+        <div class="json-modal__backdrop" data-json-close></div>
+        <section class="json-modal__panel" role="dialog" aria-modal="true" aria-labelledby="json-modal-title">
+            <div class="json-modal__header">
+                <h2 id="json-modal-title">JSON</h2>
+                <button class="icon-btn" type="button" data-json-close aria-label="Close">&times;</button>
+            </div>
+            <pre class="json-modal__body"><code id="json-modal-code"></code></pre>
+        </section>
+    </div>
+    <script>
+    (function () {
+        const modal = document.getElementById("json-modal");
+        const code = document.getElementById("json-modal-code");
+        if (!modal || !code) return;
+
+        function escapeHtml(value) {
+            return value
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
+
+        function highlight(jsonText) {
+            const escaped = escapeHtml(jsonText);
+            return escaped.replace(
+                /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+                function (match) {
+                    let cls = "json-number";
+                    if (match.startsWith('"')) {
+                        cls = match.endsWith(":") ? "json-key" : "json-string";
+                    } else if (match === "true" || match === "false") {
+                        cls = "json-boolean";
+                    } else if (match === "null") {
+                        cls = "json-null";
+                    }
+                    return '<span class="' + cls + '">' + match + '</span>';
+                }
+            );
+        }
+
+        function openJson(button) {
+            const label = button.getAttribute("data-json-title") || "JSON";
+            const raw = button.getAttribute("data-json") || "{}";
+            let pretty = raw;
+            try {
+                pretty = JSON.stringify(JSON.parse(raw), null, 2);
+            } catch (_error) {
+                pretty = raw;
+            }
+            document.getElementById("json-modal-title").textContent = label;
+            code.innerHTML = highlight(pretty);
+            modal.classList.add("is-open");
+            modal.setAttribute("aria-hidden", "false");
+        }
+
+        function closeJson() {
+            modal.classList.remove("is-open");
+            modal.setAttribute("aria-hidden", "true");
+            code.textContent = "";
+        }
+
+        document.addEventListener("click", function (event) {
+            const opener = event.target.closest("[data-json]");
+            if (opener) {
+                openJson(opener);
+                return;
+            }
+            if (event.target.closest("[data-json-close]")) {
+                closeJson();
+            }
+        });
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                closeJson();
+            }
+        });
+    })();
+    </script>
 </body>
 </html>
