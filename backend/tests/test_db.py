@@ -29,6 +29,12 @@ def test_init_db_creates_tables(tmp_path, monkeypatch) -> None:
         "backup_runs",
     }.issubset(table_names)
 
+    inspector = inspect(get_engine())
+    record_columns = {column["name"] for column in inspector.get_columns("records")}
+    file_columns = {column["name"] for column in inspector.get_columns("files")}
+    assert "created_by_token_id" in record_columns
+    assert "created_by_token_id" in file_columns
+
 
 def test_sqlite_pragmas_are_enabled(tmp_path, monkeypatch) -> None:
     configure_test_db(tmp_path, monkeypatch)

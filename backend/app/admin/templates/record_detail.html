@@ -18,6 +18,12 @@
 </div>
 
 <div class="card">
+    <dl class="meta-grid">
+        <div>
+            <dt>Created By</dt>
+            <dd>{{ created_by }}</dd>
+        </div>
+    </dl>
     <h2>Fields</h2>
     <table>
         <tbody>
@@ -45,7 +51,7 @@
     {% if files %}
     <table>
         <thead>
-            <tr><th>Filename</th><th>Type</th><th>Size</th><th>Object Key</th><th>Actions</th></tr>
+            <tr><th>Filename</th><th>Type</th><th>Size</th><th>Created By</th><th>Object Key</th><th>Actions</th></tr>
         </thead>
         <tbody>
             {% for f in files %}
@@ -58,6 +64,7 @@
                 </td>
                 <td>{{ f.content_type or '-' }}</td>
                 <td>{{ f.size_bytes|default(0) }}</td>
+                <td class="token-cell">{{ f.created_by }}</td>
                 <td><code style="font-size: 0.75em;">{{ f.object_key }}</code></td>
                 <td class="file-actions-cell">
                     <div class="icon-actions">

@@ -61,6 +61,7 @@ def create_file(
     filename: str,
     content_type: str,
     data: bytes,
+    created_by_token_id: str | None = None,
 ) -> FileModel:
     file_settings = _get_file_settings(app_id, resource)
 
@@ -94,6 +95,7 @@ def create_file(
             content_type=content_type,
             size_bytes=len(data),
             checksum=checksum,
+            created_by_token_id=created_by_token_id,
             created_at=utc_now(),
         )
         session.add(model)

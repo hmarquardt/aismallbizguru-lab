@@ -17,6 +17,7 @@
         <thead>
             <tr>
                 <th>Data</th>
+                <th>Created By</th>
                 <th>Updated</th>
                 <th>ID</th>
             </tr>
@@ -32,6 +33,7 @@
                         data-json-title="{{ app_id }}/{{ resource }} {{ record.id }}"
                     >JSON</button>
                 </td>
+                <td class="token-cell">{{ record.created_by }}</td>
                 <td>{{ record.updated_at[:19] }}</td>
                 <td><a href="/admin/records/{{ record.id }}"><code style="font-size: 0.75em;">{{ record.id }}</code></a></td>
             </tr>

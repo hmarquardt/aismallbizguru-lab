@@ -33,6 +33,7 @@ def _record_out_from_model(model) -> RecordOut:
         app_id=model.app_id,
         resource=model.resource,
         data=data,
+        created_by_token_id=getattr(model, "created_by_token_id", None),
         created_at=model.created_at,
         updated_at=model.updated_at,
         deleted_at=model.deleted_at,
@@ -225,6 +226,7 @@ def create_wildlife_trip_from_observations(
             "wildlife-field-recorder",
             "trips",
             _build_trip_from_observations(body.title, body.local_trip_id, selected),
+            created_by_token_id=token.id,
         )
         return _record_out_from_model(model)
     except RecordError as e:
@@ -257,7 +259,7 @@ def record_create(
 ) -> RecordOut:
     check_scope(token, app_id, "write")
     try:
-        model = create_record(app_id, resource, body.data)
+        model = create_record(app_id, resource, body.data, created_by_token_id=token.id)
         return _record_out_from_model(model)
     except RecordError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

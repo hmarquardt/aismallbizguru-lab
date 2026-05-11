@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.config.loader import AppConfigRegistry, get_registry
@@ -8,6 +8,26 @@ from app.db.session import get_engine, get_session_factory
 
 def create_tables() -> None:
     Base.metadata.create_all(bind=get_engine())
+    add_missing_columns()
+
+
+def add_missing_columns() -> None:
+    columns = {
+        "records": {
+            "created_by_token_id": "TEXT",
+        },
+        "files": {
+            "created_by_token_id": "TEXT",
+        },
+    }
+    with get_engine().begin() as connection:
+        for table_name, expected_columns in columns.items():
+            existing_columns = {
+                row[1] for row in connection.execute(text(f"PRAGMA table_info({table_name})")).all()
+            }
+            for column_name, column_type in expected_columns.items():
+                if column_name not in existing_columns:
+                    connection.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"))
 
 
 def sync_configured_apps(session: Session, registry: AppConfigRegistry | None = None) -> None:

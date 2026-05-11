@@ -200,6 +200,39 @@ tr:hover {
 .status-error { color: #e74c3c; }
 .status-warning { color: #f39c12; }
 
+.token-cell {
+    max-width: 16rem;
+    overflow-wrap: anywhere;
+    font-size: 0.84rem;
+    color: #455a64;
+}
+
+.meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 1rem;
+    margin: 0 0 1rem;
+}
+
+.meta-grid div {
+    padding: 0.75rem;
+    border: 1px solid #e1e7eb;
+    border-radius: 4px;
+    background: #f8fafb;
+}
+
+.meta-grid dt {
+    color: #607d8b;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.meta-grid dd {
+    margin: 0.25rem 0 0;
+    overflow-wrap: anywhere;
+}
+
 .page-header {
     display: flex;
     align-items: center;

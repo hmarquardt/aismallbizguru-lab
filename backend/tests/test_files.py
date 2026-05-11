@@ -134,6 +134,7 @@ def test_wfr_upload_audio_to_observation(client, wfr_auth_token, monkeypatch):
         headers={"Authorization": f"Bearer {wfr_auth_token}"},
     )
     assert response.status_code == 201
+    assert response.json()["created_by_token_id"] == "test-token-wfr-files"
 
 
 def test_wfr_upload_audio_with_codec_parameter(client, wfr_auth_token, monkeypatch):

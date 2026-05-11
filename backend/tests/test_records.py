@@ -60,6 +60,7 @@ def test_create_record(client, auth_token):
     assert json["app_id"] == "junk-drawer"
     assert json["resource"] == "notes"
     assert json["data"]["title"] == "My Note"
+    assert json["created_by_token_id"] == "test-token-1"
 
 
 def test_list_records(client, auth_token):

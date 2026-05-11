@@ -18,6 +18,7 @@ class RecordOut(BaseModel):
     app_id: str
     resource: str
     data: dict[str, Any]
+    created_by_token_id: str | None = None
     created_at: str
     updated_at: str
     deleted_at: str | None = None
@@ -33,6 +34,7 @@ class RecordOut(BaseModel):
             app_id=row.app_id,
             resource=row.resource,
             data=data,
+            created_by_token_id=getattr(row, "created_by_token_id", None),
             created_at=row.created_at,
             updated_at=row.updated_at,
             deleted_at=row.deleted_at,

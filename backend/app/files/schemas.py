@@ -12,6 +12,7 @@ class FileOut(BaseModel):
     content_type: str | None
     size_bytes: int | None
     checksum: str | None
+    created_by_token_id: str | None = None
     created_at: str
     url: str
     download_url: str
@@ -29,6 +30,7 @@ class FileOut(BaseModel):
             content_type=row.content_type,
             size_bytes=row.size_bytes,
             checksum=row.checksum,
+            created_by_token_id=getattr(row, "created_by_token_id", None),
             created_at=row.created_at,
             url=url,
             download_url=url,

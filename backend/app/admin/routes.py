@@ -198,6 +198,26 @@ def app_filter_options() -> list[dict[str, str]]:
     ]
 
 
+def token_display(token_id: str | None, token_names: dict[str, str]) -> str:
+    if not token_id:
+        return "Admin"
+    token_name = token_names.get(token_id)
+    if token_name:
+        return f"{token_name} ({token_id})"
+    return f"Deleted token ({token_id})"
+
+
+def token_name_map(token_ids: set[str]) -> dict[str, str]:
+    if not token_ids:
+        return {}
+    session = get_session_factory()()
+    try:
+        tokens = session.scalars(select(ApiTokenModel).where(ApiTokenModel.id.in_(token_ids))).all()
+        return {token.id: token.name for token in tokens}
+    finally:
+        session.close()
+
+
 def get_record_or_404(record_id: str) -> RecordModel:
     record = get_record(record_id)
     if record is None or record.deleted_at is not None:
@@ -258,6 +278,7 @@ def resource_records(app_id: str, resource: str, _: Annotated[str, Depends(requi
     if app_config is None or resource_config is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
     records = list_resource_records(app_id, resource)
+    token_names = token_name_map({r.created_by_token_id for r in records if r.created_by_token_id})
     return render("resource_records.html", app_id=app_id, app=app_config,
                   resource=resource, resource_config=resource_config,
                   records=[{
@@ -266,6 +287,7 @@ def resource_records(app_id: str, resource: str, _: Annotated[str, Depends(requi
                       "data_json": json_display_value(
                           json.loads(r.data_json) if isinstance(r.data_json, str) else r.data_json
                       ),
+                      "created_by": token_display(r.created_by_token_id, token_names),
                       "created_at": r.created_at,
                       "updated_at": r.updated_at,
                   } for r in records])
@@ -326,10 +348,13 @@ def list_records(
         session.close()
 
     data = []
+    token_names = token_name_map({r.created_by_token_id for r in records if r.created_by_token_id})
     for r in records:
         rec_data = json.loads(r.data_json) if isinstance(r.data_json, str) else r.data_json
         data.append({"id": r.id, "app_id": r.app_id, "resource": r.resource,
-                     "data": rec_data, "data_json": json_display_value(rec_data), "created_at": r.created_at})
+                     "data": rec_data, "data_json": json_display_value(rec_data),
+                     "created_by": token_display(r.created_by_token_id, token_names),
+                     "created_at": r.created_at})
     return render(
         "records.html",
         records=data,
@@ -350,8 +375,19 @@ def record_detail(record_id: str, _: Annotated[str, Depends(require_admin)]):
 
     files = list_files(record.app_id, record.resource, record.id) if resource_config.files.enabled else []
     data = json.loads(record.data_json) if isinstance(record.data_json, str) else record.data_json
+    token_ids = {record.created_by_token_id} if record.created_by_token_id else set()
+    token_ids.update(f.created_by_token_id for f in files if f.created_by_token_id)
+    token_names = token_name_map(token_ids)
     return render("record_detail.html", record=record, data=data, app=app_config,
-                  resource_config=resource_config, files=files)
+                  resource_config=resource_config, files=[{
+                      "id": f.id,
+                      "object_key": f.object_key,
+                      "filename": f.filename,
+                      "content_type": f.content_type,
+                      "size_bytes": f.size_bytes,
+                      "created_by": token_display(f.created_by_token_id, token_names),
+                  } for f in files],
+                  created_by=token_display(record.created_by_token_id, token_names))
 
 
 @router.get("/records/{record_id}/edit", response_class=HTMLResponse)
@@ -444,10 +480,12 @@ def list_files_admin(
         ).all()
     finally:
         session.close()
+    token_names = token_name_map({f.created_by_token_id for f in files if f.created_by_token_id})
     return render("files.html", files=[{
         "id": f.id, "app_id": f.app_id, "resource": f.resource,
         "record_id": f.record_id, "filename": f.filename,
-        "content_type": f.content_type, "size_bytes": f.size_bytes, "created_at": f.created_at
+        "content_type": f.content_type, "size_bytes": f.size_bytes, "created_at": f.created_at,
+        "created_by": token_display(f.created_by_token_id, token_names),
     } for f in files], apps=app_filter_options(), selected_app_id=app_id or "", selected_resource=resource or "")
 
 

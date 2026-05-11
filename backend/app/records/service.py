@@ -50,7 +50,12 @@ def list_records(app_id: str, resource: str, include_deleted: bool = False) -> l
         session.close()
 
 
-def create_record(app_id: str, resource: str, data: dict) -> RecordModel:
+def create_record(
+    app_id: str,
+    resource: str,
+    data: dict,
+    created_by_token_id: str | None = None,
+) -> RecordModel:
     _validate_app_resource(app_id, resource)
     _validate_fields(app_id, resource, data)
 
@@ -62,6 +67,7 @@ def create_record(app_id: str, resource: str, data: dict) -> RecordModel:
             app_id=app_id,
             resource=resource,
             data_json=json.dumps(data),
+            created_by_token_id=created_by_token_id,
             created_at=utc_now(),
             updated_at=utc_now(),
         )

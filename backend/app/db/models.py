@@ -30,6 +30,7 @@ class RecordModel(Base):
     app_id: Mapped[str] = mapped_column(ForeignKey("apps.id"), nullable=False)
     resource: Mapped[str] = mapped_column(Text, nullable=False)
     data_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by_token_id: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(Text, default=utc_now, nullable=False)
     updated_at: Mapped[str] = mapped_column(Text, default=utc_now, onupdate=utc_now, nullable=False)
     deleted_at: Mapped[str | None] = mapped_column(Text)
@@ -48,6 +49,7 @@ class FileModel(Base):
     content_type: Mapped[str | None] = mapped_column(Text)
     size_bytes: Mapped[int | None] = mapped_column(Integer)
     checksum: Mapped[str | None] = mapped_column(Text)
+    created_by_token_id: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(Text, default=utc_now, nullable=False)
     deleted_at: Mapped[str | None] = mapped_column(Text)
 

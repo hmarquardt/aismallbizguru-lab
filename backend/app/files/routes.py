@@ -26,7 +26,7 @@ def upload_file(
         content = file.file.read()
         fname = file.filename or "unnamed"
         ctype = file.content_type or "application/octet-stream"
-        model = create_file(app_id, resource, record_id, fname, ctype, content)
+        model = create_file(app_id, resource, record_id, fname, ctype, content, created_by_token_id=token.id)
         return FileOut.from_row(model)
     except FileServiceError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

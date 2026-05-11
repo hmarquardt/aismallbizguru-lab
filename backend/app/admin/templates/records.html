@@ -32,7 +32,7 @@
     {% if records %}
     <table>
         <thead>
-            <tr><th>App</th><th>Resource</th><th>Data</th><th>Created</th><th>ID</th></tr>
+            <tr><th>App</th><th>Resource</th><th>Data</th><th>Created By</th><th>Created</th><th>ID</th></tr>
         </thead>
         <tbody>
             {% for r in records %}
@@ -47,6 +47,7 @@
                         data-json-title="{{ r.app_id }}/{{ r.resource }} {{ r.id }}"
                     >JSON</button>
                 </td>
+                <td class="token-cell">{{ r.created_by }}</td>
                 <td>{{ r.created_at[:19] }}</td>
                 <td><a href="/admin/records/{{ r.id }}"><code style="font-size: 0.75em;">{{ r.id }}</code></a></td>
             </tr>

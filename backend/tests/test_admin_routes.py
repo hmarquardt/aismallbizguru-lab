@@ -230,11 +230,30 @@ def test_admin_records_page_filters_by_app_and_uses_json_pills(tmp_path, monkeyp
 
     with TestClient(app) as client:
         init_db()
+        session = get_session_factory()()
+        try:
+            session.add(
+                ApiTokenModel(
+                    id="token-record-display",
+                    name="Record Display Token",
+                    token_hash="hashed-token",
+                    scopes_json='{"wildlife-field-recorder": ["read", "write"]}',
+                    created_at=utc_now(),
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
         create_record("junk-drawer", "notes", {"title": "Admin Note"})
-        create_record("wildlife-field-recorder", "observations", {
-            "localId": "obs-admin-filter",
-            "createdAt": "2026-05-11T10:00:00Z",
-        })
+        create_record(
+            "wildlife-field-recorder",
+            "observations",
+            {
+                "localId": "obs-admin-filter",
+                "createdAt": "2026-05-11T10:00:00Z",
+            },
+            created_by_token_id="token-record-display",
+        )
         client.cookies.set("session", "test-session")
         response = client.get("/admin/records?app_id=wildlife-field-recorder")
 
@@ -242,6 +261,7 @@ def test_admin_records_page_filters_by_app_and_uses_json_pills(tmp_path, monkeyp
     assert "data-json=" in response.text
     assert "obs-admin-filter" in response.text
     assert "Admin Note" not in response.text
+    assert "Record Display Token" in response.text
     assert 'value="wildlife-field-recorder" selected' in response.text
 
 
@@ -347,6 +367,15 @@ def test_admin_files_page_filters_by_app(tmp_path, monkeypatch) -> None:
         init_db()
         session = get_session_factory()()
         try:
+            session.add(
+                ApiTokenModel(
+                    id="token-file-display",
+                    name="File Display Token",
+                    token_hash="hashed-token",
+                    scopes_json='{"wildlife-field-recorder": ["read", "write"]}',
+                    created_at=utc_now(),
+                )
+            )
             session.add_all([
                 FileModel(
                     id="admin-file-junk",
@@ -372,6 +401,7 @@ def test_admin_files_page_filters_by_app(tmp_path, monkeypatch) -> None:
                     content_type="image/jpeg",
                     size_bytes=24,
                     checksum="def456",
+                    created_by_token_id="token-file-display",
                     created_at=utc_now(),
                 ),
             ])
@@ -385,6 +415,7 @@ def test_admin_files_page_filters_by_app(tmp_path, monkeypatch) -> None:
     assert response.status_code == 200
     assert "admin-file-wfr.jpg" in response.text
     assert "admin-file-junk.txt" not in response.text
+    assert "File Display Token" in response.text
     assert 'value="wildlife-field-recorder" selected' in response.text
 
 
