@@ -117,6 +117,25 @@ docker compose ps
 curl https://lab.aismallbizguru.com/api/health
 ```
 
+## Boot Startup
+
+The compose services use `restart: unless-stopped`, and Docker should be enabled at boot:
+
+```bash
+systemctl enable --now docker
+```
+
+Install the LabBox systemd unit as an additional guard so the compose project is explicitly brought up after host reboot:
+
+```bash
+cp /opt/labbox/deploy/labbox.service /etc/systemd/system/labbox.service
+systemctl daemon-reload
+systemctl enable --now labbox.service
+systemctl status labbox.service --no-pager
+```
+
+The unit runs `docker compose up -d` from `/opt/labbox` on boot and `docker compose stop` if the service is stopped.
+
 ## First Backup
 
 ```bash
