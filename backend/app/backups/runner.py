@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 
 from app.backups.service import finish_backup_run_failure, finish_backup_run_success, start_backup_run
@@ -40,7 +41,11 @@ def run_backup_now(timeout_seconds: int = 900) -> str:
 
 def _extract_snapshot_id(output: str) -> str:
     for line in output.splitlines():
-        lowered = line.lower()
-        if "snapshot" in lowered or "id:" in lowered:
-            return line.strip()
+        match = re.search(r"\bsnapshot\s+([0-9a-f]{8,64})\s+saved\b", line, re.IGNORECASE)
+        if match:
+            return match.group(1)
+    for line in output.splitlines():
+        match = re.search(r"^\s*ID:\s*([0-9a-f]{8,64})\s*$", line, re.IGNORECASE)
+        if match:
+            return match.group(1)
     return ""
