@@ -18,7 +18,7 @@ def test_health_endpoint(tmp_path, monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json() == {
         "status": "ok",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "host": "lab.aismallbizguru.com",
         "db": "ok",
         "storage": "unknown",

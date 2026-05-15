@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     sqlite_path: str = Field(default="../data/sqlite/labbox.db", alias="SQLITE_PATH")
     app_config_path: str = Field(default="../config/apps.yaml", alias="APP_CONFIG_PATH")
     cors_allow_origins: str = Field(default="", alias="CORS_ALLOW_ORIGINS")
-    version: str = "0.1.0"
+    version: str = "0.2.0"
 
     admin_password_hash: str | None = Field(default=None, alias="ADMIN_PASSWORD_HASH")
     admin_session_secret: str | None = Field(default=None, alias="ADMIN_SESSION_SECRET")
