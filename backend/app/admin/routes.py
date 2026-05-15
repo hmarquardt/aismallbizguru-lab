@@ -17,6 +17,18 @@ from app.db.models import ApiTokenModel, BackupRunModel, FileModel, RecordModel,
 from app.db.session import get_session_factory
 from app.files.service import FileServiceError, create_file, delete_file_record, get_file_metadata, list_files, rename_file_record
 from app.files.storage import StorageError, get_file
+from app.proxy.service import (
+    ProxyError,
+    create_source,
+    default_config_json,
+    fetch_source,
+    get_source_by_id,
+    list_sources as list_proxy_sources,
+    preview_body,
+    soft_delete_source,
+    source_to_dict,
+    update_source,
+)
 from app.records.service import RecordError, create_record, get_record, list_records as list_resource_records, soft_delete_record, update_record
 from app.settings import get_settings
 from app.templates import env
@@ -189,6 +201,31 @@ def format_field_value(field_type: FieldType, value: Any) -> str:
 
 def json_display_value(value: Any) -> str:
     return json.dumps(value, indent=2, sort_keys=True)
+
+
+def parse_json_object(raw_value: str, label: str = "JSON") -> dict:
+    try:
+        value = json.loads(raw_value)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{label} is invalid: {exc.msg}") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    return value
+
+
+def proxy_source_view(source) -> dict:
+    data = source_to_dict(source)
+    data["config_json"] = json.dumps(data["config"], indent=2, sort_keys=True)
+    return data
+
+
+def parse_sample_query(raw_value: str) -> list[tuple[str, str]]:
+    from urllib.parse import parse_qsl
+
+    raw_value = raw_value.strip()
+    if raw_value.startswith("?"):
+        raw_value = raw_value[1:]
+    return parse_qsl(raw_value, keep_blank_values=True)
 
 
 def app_filter_options() -> list[dict[str, str]]:
@@ -541,6 +578,178 @@ def delete_file_page(
     if wants_json(request):
         return ajax_response("File deleted", location)
     return redirect(location, response)
+
+
+@router.get("/proxy-sources", response_class=HTMLResponse)
+def proxy_sources_page(
+    _: Annotated[str, Depends(require_admin)],
+    edit_id: Annotated[str | None, Query()] = None,
+):
+    sources = [proxy_source_view(source) for source in list_proxy_sources()]
+    editing = None
+    if edit_id:
+        source = get_source_by_id(edit_id)
+        if source is None or source.deleted_at is not None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proxy source not found")
+        editing = proxy_source_view(source)
+    return render(
+        "proxy_sources.html",
+        sources=sources,
+        editing=editing,
+        default_config_json=default_config_json(),
+        error=None,
+        form_values={},
+    )
+
+
+@router.post("/proxy-sources")
+def create_proxy_source_page(
+    request: Request,
+    response: Response,
+    _: Annotated[str, Depends(require_admin)],
+    name: Annotated[str, Form()],
+    slug: Annotated[str, Form()],
+    description: Annotated[str, Form()] = "",
+    config_json: Annotated[str, Form()] = "",
+    enabled: Annotated[str | None, Form()] = None,
+    public: Annotated[str | None, Form()] = None,
+):
+    try:
+        source = create_source(
+            slug,
+            name,
+            description,
+            enabled is not None,
+            public is not None,
+            parse_json_object(config_json, "Config JSON"),
+        )
+    except (ValueError, ProxyError) as exc:
+        if wants_json(request):
+            return JSONResponse({"ok": False, "message": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
+        return render(
+            "proxy_sources.html",
+            sources=[proxy_source_view(source) for source in list_proxy_sources()],
+            editing=None,
+            default_config_json=default_config_json(),
+            error=str(exc),
+            form_values=dict(name=name, slug=slug, description=description, config_json=config_json),
+        )
+    if wants_json(request):
+        return ajax_response("Proxy source created", f"/admin/proxy-sources?edit_id={source.id}", id=source.id)
+    return redirect(f"/admin/proxy-sources?edit_id={source.id}", response)
+
+
+@router.post("/proxy-sources/{source_id}")
+def update_proxy_source_page(
+    source_id: str,
+    request: Request,
+    response: Response,
+    _: Annotated[str, Depends(require_admin)],
+    name: Annotated[str, Form()],
+    slug: Annotated[str, Form()],
+    description: Annotated[str, Form()] = "",
+    config_json: Annotated[str, Form()] = "",
+    enabled: Annotated[str | None, Form()] = None,
+    public: Annotated[str | None, Form()] = None,
+):
+    try:
+        update_source(
+            source_id,
+            slug=slug,
+            name=name,
+            description=description,
+            enabled=enabled is not None,
+            public=public is not None,
+            config=parse_json_object(config_json, "Config JSON"),
+        )
+    except (ValueError, ProxyError) as exc:
+        if wants_json(request):
+            return JSONResponse({"ok": False, "message": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
+        source = get_source_by_id(source_id)
+        return render(
+            "proxy_sources.html",
+            sources=[proxy_source_view(source) for source in list_proxy_sources()],
+            editing=proxy_source_view(source) if source else None,
+            default_config_json=default_config_json(),
+            error=str(exc),
+            form_values=dict(name=name, slug=slug, description=description, config_json=config_json),
+        )
+    if wants_json(request):
+        return ajax_response("Proxy source saved", f"/admin/proxy-sources?edit_id={source_id}", id=source_id)
+    return redirect(f"/admin/proxy-sources?edit_id={source_id}", response)
+
+
+@router.post("/proxy-sources/{source_id}/clone")
+def clone_proxy_source_page(
+    source_id: str,
+    request: Request,
+    response: Response,
+    _: Annotated[str, Depends(require_admin)],
+):
+    source = get_source_by_id(source_id)
+    if source is None or source.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proxy source not found")
+    try:
+        clone = create_source(
+            f"{source.slug}-copy",
+            f"{source.name} Copy",
+            source.description,
+            False,
+            source.public,
+            json.loads(source.config_json),
+        )
+    except ProxyError as exc:
+        if wants_json(request):
+            return JSONResponse({"ok": False, "message": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if wants_json(request):
+        return ajax_response("Proxy source cloned", f"/admin/proxy-sources?edit_id={clone.id}", id=clone.id)
+    return redirect(f"/admin/proxy-sources?edit_id={clone.id}", response)
+
+
+@router.post("/proxy-sources/{source_id}/delete")
+def delete_proxy_source_page(
+    source_id: str,
+    request: Request,
+    response: Response,
+    _: Annotated[str, Depends(require_admin)],
+):
+    try:
+        soft_delete_source(source_id)
+    except ProxyError as exc:
+        if wants_json(request):
+            return JSONResponse({"ok": False, "message": str(exc)}, status_code=status.HTTP_400_BAD_REQUEST)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if wants_json(request):
+        return ajax_response("Proxy source deleted", "/admin/proxy-sources")
+    return redirect("/admin/proxy-sources", response)
+
+
+@router.post("/proxy-sources/{source_id}/test")
+def test_proxy_source_page(
+    source_id: str,
+    _: Annotated[str, Depends(require_admin)],
+    sample_query: Annotated[str, Form()] = "",
+) -> JSONResponse:
+    source = get_source_by_id(source_id)
+    if source is None or source.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proxy source not found")
+    try:
+        result = fetch_source(source, parse_sample_query(sample_query))
+    except ProxyError as exc:
+        payload = {"ok": False, "error": exc.message}
+        if exc.upstream_url:
+            payload["upstream_url"] = exc.upstream_url
+        return JSONResponse(payload)
+    return JSONResponse({
+        "ok": True,
+        "upstream_url": result.upstream_url,
+        "status_code": result.status_code,
+        "content_type": result.content_type,
+        "bytes": len(result.body),
+        "cache_status": result.cache_status,
+        "preview": preview_body(result.body, result.content_type),
+    })
 
 
 @router.get("/tokens", response_class=HTMLResponse)

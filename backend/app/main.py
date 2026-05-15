@@ -13,6 +13,7 @@ from app.db.init_db import init_db
 from app.files.routes import router as files_router
 from app.files.storage import ensure_bucket_exists
 from app.health.routes import router as health_router
+from app.proxy.routes import router as proxy_router
 from app.records.routes import router as records_router
 from app.settings import get_settings
 
@@ -45,6 +46,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(backups_router)
     app.include_router(files_router)
+    app.include_router(proxy_router)
     app.include_router(records_router)
     app.include_router(admin_router)
     return app

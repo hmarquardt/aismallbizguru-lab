@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Proxy Sources - LabBox Admin{% endblock %}
+
+{% block content %}
+<div class="page-header compact">
+    <div>
+        <h1>Proxy Sources</h1>
+        <p class="muted">Named upstream API sources for static frontend pages.</p>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+    <h2>{{ "Edit Source" if editing else "Create Source" }}</h2>
+    {% set values = form_values if form_values else editing %}
+    <form method="post" action="{{ '/admin/proxy-sources/' ~ editing.id if editing else '/admin/proxy-sources' }}">
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" value="{{ values.name if values else '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="slug">Slug</label>
+            <input type="text" id="slug" name="slug" value="{{ values.slug if values else '' }}" placeholder="open-meteo" required>
+            <p class="help-text">Lowercase letters, numbers, and hyphens only.</p>
+        </div>
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="2">{{ values.description if values else '' }}</textarea>
+        </div>
+        <label class="check-row">
+            <input type="checkbox" name="enabled" {% if not values or values.enabled %}checked{% endif %}>
+            Enabled
+        </label>
+        <label class="check-row">
+            <input type="checkbox" name="public" {% if values and values.public %}checked{% endif %}>
+            Public
+        </label>
+        <div class="form-group">
+            <label for="config_json">Config JSON</label>
+            <textarea id="config_json" name="config_json" rows="18" spellcheck="false">{{ values.config_json if values and values.config_json else default_config_json }}</textarea>
+        </div>
+        <div class="actions">
+            <button type="submit" class="btn">{{ "Save Source" if editing else "Create Source" }}</button>
+            {% if editing %}
+            <a class="btn btn-secondary" href="/admin/proxy-sources">New Source</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if editing %}
+<div class="card">
+    <h2>Test Source</h2>
+    <form method="post" action="/admin/proxy-sources/{{ editing.id }}/test" id="proxy-test-form">
+        <div class="form-group">
+            <label for="sample_query">Sample query params</label>
+            <input type="text" id="sample_query" name="sample_query" placeholder="latitude=38.3553&longitude=-87.5675&current=temperature_2m">
+        </div>
+        <button type="submit" class="btn">Test Source</button>
+    </form>
+    <pre id="proxy-test-result" class="proxy-test-result" hidden></pre>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Sources</h2>
+    {% if sources %}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Slug</th>
+                <th>Status</th>
+                <th>Access</th>
+                <th>Updated</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for source in sources %}
+            <tr>
+                <td>{{ source.name }}</td>
+                <td><code>{{ source.slug }}</code></td>
+                <td>
+                    {% if source.enabled %}
+                    <span class="status-ok">Enabled</span>
+                    {% else %}
+                    <span class="status-warning">Disabled</span>
+                    {% endif %}
+                </td>
+                <td>{{ "Public" if source.public else "Private" }}</td>
+                <td>{{ source.updated_at[:19] }}</td>
+                <td>
+                    <div class="icon-actions">
+                        <a class="btn btn-small" href="/admin/proxy-sources?edit_id={{ source.id }}">Edit</a>
+                        <form method="post" action="/admin/proxy-sources/{{ source.id }}/clone">
+                            <button type="submit" class="btn btn-small btn-secondary">Clone</button>
+                        </form>
+                        <form method="post" action="/admin/proxy-sources/{{ source.id }}/delete" data-ajax data-ajax-remove="row">
+                            <button type="submit" class="btn btn-small btn-danger">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No proxy sources yet.</p>
+    {% endif %}
+</div>
+
+<script>
+(function () {
+    const form = document.getElementById("proxy-test-form");
+    const output = document.getElementById("proxy-test-result");
+    if (!form || !output) return;
+
+    form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        output.hidden = false;
+        output.textContent = "Testing...";
+        const response = await fetch(form.action, {
+            method: "POST",
+            body: new FormData(form),
+            headers: {"X-Requested-With": "XMLHttpRequest"},
+        });
+        const payload = await response.json();
+        output.textContent = JSON.stringify(payload, null, 2);
+    });
+})();
+</script>
+{% endblock %}

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import ForeignKey, Integer, Text
+from sqlalchemy import Boolean, ForeignKey, Integer, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -51,6 +51,21 @@ class FileModel(Base):
     checksum: Mapped[str | None] = mapped_column(Text)
     created_by_token_id: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(Text, default=utc_now, nullable=False)
+    deleted_at: Mapped[str | None] = mapped_column(Text)
+
+
+class ProxySourceModel(Base):
+    __tablename__ = "proxy_sources"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    public: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    config_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[str] = mapped_column(Text, default=utc_now, nullable=False)
+    updated_at: Mapped[str] = mapped_column(Text, default=utc_now, onupdate=utc_now, nullable=False)
     deleted_at: Mapped[str | None] = mapped_column(Text)
 
 
