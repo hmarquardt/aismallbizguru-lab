@@ -87,6 +87,16 @@ git branch
 
 Agents may stage/commit only if explicitly asked.
 
+Every code or documentation commit must update the LabBox backend version in:
+
+```text
+backend/pyproject.toml
+backend/app/settings.py
+backend/tests/test_health.py
+```
+
+Use a small patch bump for routine fixes and documentation-only changes, and a minor bump for larger feature work. Verify `/api/health` and the admin dashboard report the new version before considering a deploy complete.
+
 ---
 
 ## 1.3 Secret Handling Rules
