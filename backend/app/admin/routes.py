@@ -2,6 +2,7 @@ import json
 import uuid
 from typing import Any
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Query, Request, Response, status
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
@@ -226,6 +227,16 @@ def parse_sample_query(raw_value: str) -> list[tuple[str, str]]:
     if raw_value.startswith("?"):
         raw_value = raw_value[1:]
     return parse_qsl(raw_value, keep_blank_values=True)
+
+
+def content_disposition_attachment(filename: str) -> str:
+    fallback = "".join(
+        char if 32 <= ord(char) < 127 and char not in {'"', "\\", ";"} else "_"
+        for char in filename
+    ).strip()
+    if not fallback:
+        fallback = "download"
+    return f"attachment; filename=\"{fallback}\"; filename*=UTF-8''{quote(filename)}"
 
 
 def app_filter_options() -> list[dict[str, str]]:
@@ -538,7 +549,7 @@ def download_file_admin(file_id: str, _: Annotated[str, Depends(require_admin)])
     return StreamingResponse(
         data_stream,
         media_type=model.content_type or "application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{model.filename}"'},
+        headers={"Content-Disposition": content_disposition_attachment(model.filename)},
     )
 
 

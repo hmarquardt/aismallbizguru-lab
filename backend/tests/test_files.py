@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.auth.tokens import generate_token
-from app.db.models import ApiTokenModel, utc_now
+from app.db.models import ApiTokenModel, FileModel, utc_now
 from app.db.session import clear_engine_cache, get_session_factory
 from app.main import app
 from app.settings import get_settings
@@ -77,6 +77,45 @@ def test_download_file_not_found(client, auth_token):
         headers={"Authorization": f"Bearer {auth_token}"},
     )
     assert response.status_code == 404
+
+
+def test_download_file_with_unicode_filename(client, auth_token, monkeypatch):
+    from app.db.init_db import init_db
+
+    init_db()
+    monkeypatch.setattr("app.files.routes.get_file", lambda _object_key: iter([b"image data"]))
+    filename = "Screenshot 2026-05-17 at 5.33.54\u202fPM.png"
+    session = get_session_factory()()
+    try:
+        session.add(
+            FileModel(
+                id="unicode-file-1",
+                app_id="junk-drawer",
+                resource="notes",
+                record_id="note-1",
+                bucket="labbox-assets",
+                object_key="junk-drawer/note-1/image.png",
+                filename=filename,
+                content_type="image/png",
+                size_bytes=10,
+                checksum="abc",
+                created_at=utc_now(),
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    response = client.get(
+        "/api/files/unicode-file-1",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.content == b"image data"
+    content_disposition = response.headers["content-disposition"]
+    assert 'filename="Screenshot 2026-05-17 at 5.33.54_PM.png"' in content_disposition
+    assert "filename*=UTF-8''Screenshot%202026-05-17%20at%205.33.54%E2%80%AFPM.png" in content_disposition
 
 
 def test_list_files_for_unknown_resource(client, auth_token):

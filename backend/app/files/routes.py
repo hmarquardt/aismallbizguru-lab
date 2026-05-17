@@ -1,4 +1,5 @@
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
@@ -11,6 +12,16 @@ from app.files.storage import StorageError, get_file
 
 
 router = APIRouter(prefix="/api", tags=["files"])
+
+
+def content_disposition_attachment(filename: str) -> str:
+    fallback = "".join(
+        char if 32 <= ord(char) < 127 and char not in {'"', "\\", ";"} else "_"
+        for char in filename
+    ).strip()
+    if not fallback:
+        fallback = "download"
+    return f"attachment; filename=\"{fallback}\"; filename*=UTF-8''{quote(filename)}"
 
 
 @router.post("/{app_id}/{resource}/{record_id}/files", status_code=status.HTTP_201_CREATED, response_model=FileOut)
@@ -63,7 +74,7 @@ def download_file(
         return StreamingResponse(
             data_stream,
             media_type=model.content_type or "application/octet-stream",
-            headers={"Content-Disposition": f'attachment; filename="{model.filename}"'},
+            headers={"Content-Disposition": content_disposition_attachment(model.filename)},
         )
     except StorageError as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
