@@ -1,11 +1,14 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.admin.routes import router as admin_router
+from app.analytics.db import init_schema as init_analytics_schema
+from app.analytics.router import router as analytics_router
 from app.auth.routes import router as auth_router
 from app.backups.routes import router as backups_router
 from app.config.routes import router as config_router
@@ -17,10 +20,16 @@ from app.proxy.routes import router as proxy_router
 from app.records.routes import router as records_router
 from app.settings import get_settings
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     init_db()
+    try:
+        init_analytics_schema()
+    except Exception:
+        logger.exception("analytics schema initialization failed")
     if get_settings().minio_auto_init:
         try:
             ensure_bucket_exists()
@@ -47,6 +56,7 @@ def create_app() -> FastAPI:
     app.include_router(backups_router)
     app.include_router(files_router)
     app.include_router(proxy_router)
+    app.include_router(analytics_router)
     app.include_router(records_router)
     app.include_router(admin_router)
     return app

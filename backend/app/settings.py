@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     cors_allow_origins: str = Field(default="", alias="CORS_ALLOW_ORIGINS")
     version: str = "0.2.2"
 
+    analytics_db_path: str = Field(default="/data/analytics/analytics.sqlite", alias="ANALYTICS_DB_PATH")
+    analytics_dashboard_token: str = Field(default="change-me", alias="ANALYTICS_DASHBOARD_TOKEN")
+    analytics_ip_hash_pepper: str = Field(default="change-me", alias="ANALYTICS_IP_HASH_PEPPER")
+    analytics_allowed_origins_raw: str = Field(
+        default="https://hmarquardt.github.io,https://lab.aismallbizguru.com",
+        alias="ANALYTICS_ALLOWED_ORIGINS",
+    )
+
     admin_password_hash: str | None = Field(default=None, alias="ADMIN_PASSWORD_HASH")
     admin_session_secret: str | None = Field(default=None, alias="ADMIN_SESSION_SECRET")
     api_token_pepper: str | None = Field(default=None, alias="API_TOKEN_PEPPER")
@@ -32,7 +40,15 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]
+        for origin in self.analytics_allowed_origins:
+            if origin not in origins:
+                origins.append(origin)
+        return origins
+
+    @property
+    def analytics_allowed_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.analytics_allowed_origins_raw.split(",") if origin.strip()]
 
 
 @lru_cache

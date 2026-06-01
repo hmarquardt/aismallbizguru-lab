@@ -8,6 +8,10 @@ services:
       APP_ENV: development
       BASE_URL: http://localhost:8010
       SQLITE_PATH: /data/sqlite/labbox.db
+      ANALYTICS_DB_PATH: /data/analytics/analytics.sqlite
+      ANALYTICS_DASHBOARD_TOKEN: change-me
+      ANALYTICS_IP_HASH_PEPPER: change-me
+      ANALYTICS_ALLOWED_ORIGINS: https://hmarquardt.github.io,https://lab.aismallbizguru.com
       APP_CONFIG_PATH: /config/apps.yaml
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: labbox-dev
@@ -25,6 +29,7 @@ services:
       - ./scripts:/app/scripts:ro
       - ./config:/config:ro
       - ./data/sqlite:/data/sqlite
+      - ./data/analytics:/data/analytics
     depends_on:
       - minio
 
