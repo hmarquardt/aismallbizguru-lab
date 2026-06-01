@@ -9,6 +9,23 @@ from pathlib import Path
 
 from app.settings import get_settings
 
+KNOWN_SITES = (
+    {
+        "id": "junkdrawer",
+        "name": "Hank's Junk Drawer",
+        "allowed_origins": ["https://hmarquardt.github.io"],
+    },
+    {
+        "id": "top-hat-ferals",
+        "name": "Top Hat Ferals",
+        "allowed_origins": [
+            "https://tophatferals.com",
+            "https://www.tophatferals.com",
+            "https://hmarquardt.github.io",
+        ],
+    },
+)
+
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS sites (
@@ -150,6 +167,18 @@ ON sessions(site_id, visitor_id);
 """
 
 
+def _merge_origins(existing: str | None, required: list[str]) -> str:
+    try:
+        origins = json.loads(existing or "[]")
+    except json.JSONDecodeError:
+        origins = []
+    merged = [str(origin) for origin in origins if origin]
+    for origin in required:
+        if origin not in merged:
+            merged.append(origin)
+    return json.dumps(merged)
+
+
 def _connect(path: str) -> sqlite3.Connection:
     db_path = Path(path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -186,13 +215,24 @@ def init_schema() -> None:
     connection = _connect(get_db_path())
     try:
         connection.executescript(SCHEMA_SQL)
-        connection.execute(
-            """
-            INSERT OR IGNORE INTO sites (id, name, allowed_origins)
-            VALUES (?, ?, ?)
-            """,
-            ("junkdrawer", "Hank's Junk Drawer", json.dumps(["https://hmarquardt.github.io"])),
-        )
+        for site in KNOWN_SITES:
+            existing = connection.execute(
+                "SELECT allowed_origins FROM sites WHERE id = ?",
+                (site["id"],),
+            ).fetchone()
+            if existing is None:
+                connection.execute(
+                    """
+                    INSERT INTO sites (id, name, allowed_origins)
+                    VALUES (?, ?, ?)
+                    """,
+                    (site["id"], site["name"], json.dumps(site["allowed_origins"])),
+                )
+            else:
+                connection.execute(
+                    "UPDATE sites SET allowed_origins = ? WHERE id = ?",
+                    (_merge_origins(existing["allowed_origins"], site["allowed_origins"]), site["id"]),
+                )
         connection.commit()
     finally:
         connection.close()
@@ -210,4 +250,3 @@ def check_db() -> bool:
 def clear_db_cache() -> None:
     init_schema.cache_clear()
     get_db_path.cache_clear()
-

@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     analytics_dashboard_token: str = Field(default="change-me", alias="ANALYTICS_DASHBOARD_TOKEN")
     analytics_ip_hash_pepper: str = Field(default="change-me", alias="ANALYTICS_IP_HASH_PEPPER")
     analytics_allowed_origins_raw: str = Field(
-        default="https://hmarquardt.github.io,https://lab.aismallbizguru.com",
+        default=(
+            "https://hmarquardt.github.io,https://tophatferals.com,"
+            "https://www.tophatferals.com,https://lab.aismallbizguru.com"
+        ),
         alias="ANALYTICS_ALLOWED_ORIGINS",
     )
 

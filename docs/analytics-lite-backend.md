@@ -8,10 +8,15 @@ JunkStats / Analytics Lite is a small Google Analytics-style backend for static 
 ANALYTICS_DB_PATH=/data/analytics/analytics.sqlite
 ANALYTICS_DASHBOARD_TOKEN=change-me
 ANALYTICS_IP_HASH_PEPPER=change-me
-ANALYTICS_ALLOWED_ORIGINS=https://hmarquardt.github.io,https://lab.aismallbizguru.com
+ANALYTICS_ALLOWED_ORIGINS=https://hmarquardt.github.io,https://tophatferals.com,https://www.tophatferals.com,https://lab.aismallbizguru.com
 ```
 
 `ANALYTICS_DB_PATH` controls the dedicated SQLite database. `ANALYTICS_DASHBOARD_TOKEN` protects reporting endpoints. `ANALYTICS_IP_HASH_PEPPER` is used to hash IP addresses before storage. `ANALYTICS_ALLOWED_ORIGINS` is a comma-separated browser origin allowlist for collection requests.
+
+## Tracked Sites
+
+- `junkdrawer`: Hank's Junk Drawer. Allowed origin: `https://hmarquardt.github.io`.
+- `top-hat-ferals`: Top Hat Ferals. Allowed origins: `https://tophatferals.com`, `https://www.tophatferals.com`, `https://hmarquardt.github.io`.
 
 ## API Endpoints
 
@@ -53,6 +58,63 @@ curl -X POST https://lab.aismallbizguru.com/api/analytics/collect \
   }'
 ```
 
+## Top Hat Ferals CORS Smoke Tests
+
+Preflight:
+
+```bash
+curl -i -X OPTIONS "https://lab.aismallbizguru.com/api/analytics/collect" \
+  -H "Origin: https://tophatferals.com" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: content-type"
+```
+
+Collect:
+
+```bash
+curl -i -X POST "https://lab.aismallbizguru.com/api/analytics/collect" \
+  -H "Origin: https://tophatferals.com" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "site_id": "top-hat-ferals",
+    "event_type": "pageview",
+    "visitor_id": "v_test_tophat",
+    "session_id": "s_test_tophat",
+    "occurred_at": "2026-06-01T12:00:00.000Z",
+    "page": {
+      "url": "https://tophatferals.com/",
+      "host": "tophatferals.com",
+      "path": "/",
+      "query": "",
+      "title": "Top Hat Ferals"
+    },
+    "referrer": {
+      "url": "",
+      "domain": ""
+    },
+    "utm": {
+      "source": null,
+      "medium": null,
+      "campaign": null,
+      "term": null,
+      "content": null
+    },
+    "client": {
+      "language": "en-US",
+      "timezone": "America/Indiana/Indianapolis",
+      "screen_width": 1200,
+      "screen_height": 800,
+      "viewport_width": 1200,
+      "viewport_height": 800,
+      "user_agent": "curl smoke test"
+    },
+    "performance": {
+      "load_time_ms": null,
+      "navigation_type": "navigate"
+    }
+  }'
+```
+
 ## Example Dashboard Query
 
 ```bash
@@ -68,7 +130,9 @@ Raw IP addresses are never stored. The backend stores a SHA-256 hash of the IP a
 
 The production Docker Compose file already mounts `./data:/data`, which persists `/data/analytics/analytics.sqlite`. The development compose file mounts `./data/analytics:/data/analytics`.
 
-The analytics schema is created automatically on startup or first database access. The default `junkdrawer` site is seeded if missing with origin `https://hmarquardt.github.io`.
+The analytics schema is created automatically on startup or first database access. Known sites are seeded if missing, and existing known site rows have missing allowed origins merged in without replacing the site name or active flag.
+
+If the production VPS already has `.env` values, update the deployed analytics/global CORS origin allowlist manually to include `https://tophatferals.com` and `https://www.tophatferals.com`. Do not print or commit `ANALYTICS_DASHBOARD_TOKEN` or `ANALYTICS_IP_HASH_PEPPER`.
 
 ## Verifying Writes
 
@@ -86,4 +150,3 @@ The analytics schema is created automatically on startup or first database acces
    sqlite3 data/analytics/analytics.sqlite \
      'SELECT COUNT(*) FROM pageviews; SELECT COUNT(*) FROM visitors; SELECT COUNT(*) FROM sessions;'
    ```
-
